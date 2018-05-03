@@ -288,6 +288,7 @@ async function listarFirmas(pdf, ocspReq) {
 
         data.cadenaConfianza = await certificate.verify(trustedCertificates[0]);
         // data.certificado = pvutils.toBase64(pvutils.arrayBufferToString(certificate.tbs));
+        data.certificado = certificate;
         data.ocsp_estado = 2; // Desconocido por defecto.
         result.data.push(data);
     }
