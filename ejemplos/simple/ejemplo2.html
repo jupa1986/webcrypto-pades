@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- Data signing/verify -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Ejemplo #2</title>
+    <script src="lib/promise.js"></script>
+    <script src="lib/es5-shim.min.js"></script>
+    <script src="lib/polyfill.js"></script>
+    <script src="lib/webcrypto-liner.min.js"></script>
+    <script src="lib/asmcrypto.js"></script>
+    <script src="lib/elliptic.js"></script>
+    <script src="lib/protobuf.js"></script>
+    <script src="lib/idb.js"></script>
+    <script src="lib/fetch.js"></script>
+    <script src="lib/webcrypto-socket.js"></script>
+    <script src="src/pki.min.js"></script>
+    <script src="src/asn1.min.js"></script>
+    <script src="src/pvutils.min.js"></script>
+    <script src="src/pdf.min.js"></script>
+    <script src="src/pdf.worker.min.js"></script>
+    <script src="src/pdf_util.min.js"></script>
+    <style>
+        label {
+            display: inline-block;
+            width: 128px;
+        }
+
+        select {
+            display: inline-block;
+            width: 256px;
+        }
+
+        input[type=text] {
+            display: inline-block;
+            width: 256px;
+        }
+
+        .group {
+            padding: 8px 16px;
+        }
+    </style>
+</head>
+
+<body>
+  <h2>Ejemplo de firma digital con Fortify</h2>
+
+  <table border id="documentos">
+    <tr>
+      <th>Nombre</th>
+      <th>Id</th>
+      <th>Estado documento</th>
+    </tr>
+    <tr data-id="/mini.pdf">
+      <td>Documento pdf 1</td>
+      <td>55577854</td>
+      <td>sin firmar</td>
+    </tr>
+    <tr data-id="/mini.pdf">
+      <td>Documento pdf 2</td>
+      <td>55577855</td>
+      <td>sin firmar</td>
+    </tr>
+    <tr data-id="/mini.pdf">
+      <td>Documento pdf 3</td>
+      <td>55577856</td>
+      <td>sin firmar</td>
+    </tr>
+  </table>
+
+  <input type="button" id="firmar" value="Firmar Documentos"/>
+  <script type="text/javascript" src="ejemplo2.js"></script>
+</body>
+
+</html>

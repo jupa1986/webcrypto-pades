@@ -1,0 +1,22 @@
+{
+  "name": "pdfjs-firma",
+  "version": "0.0.1",
+  "description": "Firma digital para documentos PDF",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "asn1js": "^2.0.19",
+    "pkijs": "^2.1.46",
+    "pvutils": "^1.0.12"
+  },
+  "devDependencies": {
+    "node-webcrypto-p11": "^1.2.3",
+    "node-webcrypto-ossl": "^1.0.36",
+    "request": "^2.85.0"
+  }
+}

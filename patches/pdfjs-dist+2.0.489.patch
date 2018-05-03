@@ -1,0 +1,44 @@
+patch-package
+--- a/node_modules/pdfjs-dist/lib/core/obj.js
++++ b/node_modules/pdfjs-dist/lib/core/obj.js
+@@ -739,6 +739,7 @@ var XRef = function XRefClosure() {
+   XRef.prototype = {
+     setStartXRef: function XRef_setStartXRef(startXRef) {
+       this.startXRefQueue = [startXRef];
++      this.xrefBlocks = [startXRef];
+     },
+     parse: function XRef_parse(recoveryMode) {
+       var trailerDict;
+@@ -1037,6 +1038,7 @@ var XRef = function XRefClosure() {
+       var i, ii;
+       for (i = 0, ii = xrefStms.length; i < ii; ++i) {
+         this.startXRefQueue.push(xrefStms[i]);
++        this.xrefBlocks.push(xrefStms[i]);
+         this.readXRef(true);
+       }
+       var dict;
+@@ -1106,9 +1108,12 @@ var XRef = function XRefClosure() {
+           obj = dict.get('Prev');
+           if (Number.isInteger(obj)) {
+             this.startXRefQueue.push(obj);
++            this.xrefBlocks.push(obj);
+           } else if ((0, _primitives.isRef)(obj)) {
+             this.startXRefQueue.push(obj.num);
++            this.xrefBlocks.push(obj.num);
+           }
++          this.xrefBlocks.push(stream.pos);
+           this.startXRefQueue.shift();
+         }
+         return this.topDict;
+--- a/node_modules/pdfjs-dist/lib/core/parser.js
++++ b/node_modules/pdfjs-dist/lib/core/parser.js
+@@ -117,7 +117,9 @@ var Parser = function ParserClosure() {
+                 this.shift();
+                 continue;
+               }
++              var pos = this.lexer.stream.pos;
+               var key = this.buf1.name;
++              dict.set('#' + key + '_offset', pos);
+               this.shift();
+               if ((0, _primitives.isEOF)(this.buf1)) {
+                 break;
