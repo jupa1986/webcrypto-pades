@@ -368,6 +368,10 @@ function primerCertificado(provider) {
     return sequence;
 }
 
+function setEngine(nombre, provider) {
+    pkijs.setEngine(nombre, provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
+}
+
 exports.listarCertificados = listarCertificados;
 exports.listarProveedores = listarProveedores;
 exports.certificadoKey = certificadoKey;
@@ -378,3 +382,4 @@ exports.signpdf = signpdf;
 exports.listarFirmas = listarFirmas;
 exports.primerCertificado = primerCertificado;
 exports.primerProveedor = primerProveedor;
+exports.setEngine = setEngine;

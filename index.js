@@ -16,3 +16,4 @@ exports.parsePDF = PDFSIGN.parsePDF;
 exports.removeFromArray = PDFSIGN._removeFromArray;
 exports.updateArray = PDFSIGN._updateArray;
 exports.setPDFDocument = PDFSIGN.setPDFDocument;
+exports.setEngine = signutils.setEngine;

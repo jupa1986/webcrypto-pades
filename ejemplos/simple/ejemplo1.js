@@ -1,5 +1,3 @@
-var pkijs = require("pkijs");
-
 function $(id) {
     const result = document.getElementById(id);
     if (!result) {
@@ -60,7 +58,7 @@ $file.onchange = function (ev) {
 
             // Configuracion
             pdffirma.setPDFDocument(pdfjsWorker.PDFDocument);
-            pkijs.setEngine('local', provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
+            pdffirma.setEngine('local', provider);
 
             // Buscar token, leer par de claves y firmar el documento PDF
             return pdffirma.primerCertificado(provider).then(async ([key, certificate]) => {
