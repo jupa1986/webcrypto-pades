@@ -166,7 +166,7 @@ function makeSignature(data, certSimpl, key) {
 }
 
 function signpdf(pdfRaw, key, certificate) {
-    return PDFSIGN.makeSignatureSpace(pdfRaw, pkijs.getCrypto()).then(([pdf, byteRange]) => {
+    return PDFSIGN.makeSignatureSpace(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
         let data = PDFSIGN._removeFromArray(pdf, byteRange[1], byteRange[2]);
         return makeSignature(data, certificate, key).then((signature) => { // hex
             return PDFSIGN._updateArray(pdf, byteRange[1] + 1, signature);
