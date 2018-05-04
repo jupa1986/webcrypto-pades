@@ -34,8 +34,6 @@ sequence = sequence.then((provider) => {
 });
 
 sequence.then(async ([key, certificate]) => {
-    const crypto = pkijs.getCrypto();
-
     // Lectura PDF
     pdfBuffer = pdfBuffer;
 

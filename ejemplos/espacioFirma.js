@@ -21,7 +21,7 @@ sequence = sequence.then((provider) => {
     // Generar espacio para firma digital en un PDF.
     var pdfBuffer = fs.readFileSync("./simple/mini.pdf");
     pdfBuffer = new Uint8Array(pdfBuffer);
-    return pdfsign.espacioFirma(pdfBuffer, pkijs.getCrypto());
+    return pdfsign.espacioFirma(pdfBuffer, pkijs.getEngine());
 });
 
 sequence.then(([pdf, byteRange]) => {

@@ -1,3 +1,5 @@
+var pkijs = require("pkijs");
+
 function $(id) {
     const result = document.getElementById(id);
     if (!result) {
@@ -57,14 +59,14 @@ $("firmar").onclick = (ev) => {
     }
 
     // Codigo para firmar digital de un documento PDF.
-    let sequence = pdfutils.primerProveedor(ws).then((provider) => {
+    let sequence = pdffirma.primerProveedor(ws).then((provider) => {
 
         // Configuracion
-        pdfutils.setPDFDocument(pdfjsWorker.PDFDocument);
-        pkijs.setEngine('local', provider, provider.subtle);
+        pdffirma.setPDFDocument(pdfjsWorker.PDFDocument);
+        pkijs.setEngine('local', provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
 
         // Buscar token, leer par de claves y firmar el documento PDF
-        return pdfutils.primerCertificado(provider).then(async ([key, certificate]) => {
+        return pdffirma.primerCertificado(provider).then(async ([key, certificate]) => {
             // Firmar uno o varios PDFs
             var table = $("documentos");
             for (let i = 1; i < table.rows.length; i++) {
@@ -73,7 +75,7 @@ $("firmar").onclick = (ev) => {
                     console.log(id);
                     let pdfRaw = (await leerPDF(id)).target.response;
                     console.log(pdfRaw);
-                    let dataSigned = await pdfutils.firmarPDF(pdfRaw, key, certificate);
+                    let dataSigned = await pdffirma.firmarPDF(pdfRaw, key, certificate);
                     await guardarPDF(dataSigned);
                     //Actualizar estado
                     table.rows[i].cells[2].innerHTML = "firmado";
