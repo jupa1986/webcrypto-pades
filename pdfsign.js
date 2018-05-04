@@ -10,11 +10,7 @@
 
 //using the object if available or creating a new instance if not present
 
-if (typeof self === "undefined") {
-    var pvutils = require('pvutils');
-} else {
-    var pvutils = window.pvutils;
-}
+var pvutils = require('pvutils');
 
 var PDFDocument;
 

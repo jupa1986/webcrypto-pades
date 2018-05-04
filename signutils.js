@@ -1,12 +1,6 @@
-if (typeof self === "undefined") {
-    var pkijs = require("pkijs");
-    var asn1js = require("asn1js");
-    var pvutils = require('pvutils');
-} else {
-    var pkijs = window.pkijs;
-    var asn1js = window.asn1js;
-    var pvutils = window.pvutils;
-}
+var pkijs = require("pkijs");
+var asn1js = require("asn1js");
+var pvutils = require('pvutils');
 
 const PDFSIGN = require('./pdfsign').PDFSIGN;
 
