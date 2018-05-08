@@ -14,7 +14,7 @@ const config = {
     name: "SoftHSM lib",                  // OpenSC lib, SoftHSM lib
     slot: 0,
     readWrite: true,
-    pin: "123456"
+    pin: "12345678"
 };
 
 let sequence = Promise.resolve();

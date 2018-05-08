@@ -12,7 +12,7 @@ const config = {
     name: "SoftHSM lib",                  // OpenSC lib
     slot: 0,
     readWrite: true,
-    pin: "123456"
+    pin: "12345678"
 };
 
 var PDFDocument = require("./simple/src/pdf.worker.min").PDFDocument;

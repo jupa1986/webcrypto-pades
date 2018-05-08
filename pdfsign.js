@@ -564,7 +564,7 @@ var PDFSIGN = (function () {
     }
 
     const api = {
-        makeSignatureSpace: function(pdfRaw, crypto){
+        signpdfEmpty: function(pdfRaw, crypto){
             const date = new Date();
 
             let pdf = api.parsePDF(pdfRaw);
