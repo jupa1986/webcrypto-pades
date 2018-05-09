@@ -13,7 +13,7 @@ $file.onchange = function (ev) {
     var reader = new FileReader();
 
     pdffirma.setPDFDocument(pdfjsWorker.PDFDocument);
-
+    $("resultado").innerHTML = "";
     reader.onload = (data) => {
         let pdfBuffer = data.target.result;
         let sequence = pdffirma.listarFirmas(pdfBuffer).then((firmas) => {
