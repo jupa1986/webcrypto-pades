@@ -2,7 +2,7 @@ var pkijs = require("pkijs");
 var asn1js = require("asn1js");
 var pvutils = require('pvutils');
 
-const PDFSIGN = require('./pdfsign').PDFSIGN;
+const pdfsign = require('./pdfsign');
 
 let trustedCertificates = []; // Array of Certificates
 
@@ -166,10 +166,10 @@ function createCMSSigned(data, certSimpl, key) {
 }
 
 function signpdf(pdfRaw, key, certificate) {
-    return PDFSIGN.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
-        let data = PDFSIGN._removeFromArray(pdf, byteRange[1], byteRange[2]);
+    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
+        let data = pdfsign.removeFromArray(pdf, byteRange[1], byteRange[2]);
         return createCMSSigned(data, certificate, key).then((signature) => { // hex
-            return PDFSIGN._updateArray(pdf, byteRange[1] + 1, signature);
+            return pdfsign.updateArray(pdf, byteRange[1] + 1, signature);
         });
     });
 }
@@ -233,7 +233,7 @@ async function createOCSPReq(serialNumbers) {
 
 async function listSignatures(pdf, ocspReq) {
     const result = {data:[]};
-    pdf = PDFSIGN.parsePDF(pdf);
+    pdf = pdfsign.parsePDF(pdf);
 
     const sigFields = listSigFields(pdf);
     let serialNumbers = [];
@@ -269,11 +269,11 @@ async function listSignatures(pdf, ocspReq) {
             data.fechaFirma = date.replace(pattern, '$3/$2/$1 $4:$5:$6');
 
         // Limpiar Campo de la firma
-        let signedDataBuffer = PDFSIGN._removeFromArray(pdf.stream.bytes,
+        let signedDataBuffer = pdfsign.removeFromArray(pdf.stream.bytes,
                                                         byteRange[1],
                                                         byteRange[2]);
         // Limpiar datos
-        signedDataBuffer = PDFSIGN._removeFromArray(signedDataBuffer,
+        signedDataBuffer = pdfsign.removeFromArray(signedDataBuffer,
                                                     byteRange[1]+byteRange[3],
                                                     signedDataBuffer.length);
 

@@ -1,5 +1,5 @@
 const signutils = require("./signutils");
-const PDFSIGN =require("./pdfsign").PDFSIGN;
+const pdfsign =require("./pdfsign");
 
 exports.listarCertificados = signutils.listCertificates;
 exports.listarProveedores = signutils.listProviders;
@@ -11,9 +11,9 @@ exports.firmarPDF = signutils.signpdf;
 exports.listarFirmas = signutils.listSignatures;
 exports.primerCertificado = signutils.firstCertificate;
 exports.primerProveedor = signutils.firstProvider;
-exports.espacioFirma = PDFSIGN.signpdfEmpty;
-exports.parsePDF = PDFSIGN.parsePDF;
-exports.removeFromArray = PDFSIGN._removeFromArray;
-exports.updateArray = PDFSIGN._updateArray;
-exports.setPDFDocument = PDFSIGN.setPDFDocument;
+exports.espacioFirma = pdfsign.signpdfEmpty;
+exports.parsePDF = pdfsign.parsePDF;
+exports.removeFromArray = pdfsign.removeFromArray;
+exports.updateArray = pdfsign.updateArray;
+exports.setPDFDocument = pdfsign.setPDFDocument;
 exports.setEngine = signutils.setEngine;
