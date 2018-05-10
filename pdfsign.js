@@ -337,161 +337,97 @@ var PDFSIGN = (function () {
     }
 
     async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
-        // {annotEntry} is the ref to the annot widget. If we enlarge the array, make sure all the offsets
-        // after the modification will be updated -> xref table and startxref
+        //copy root and the entry with contents to the end
+        var startRoot = pdf.stream.bytes.length + 1;
+
+        var limit;
+        if (root.offset == rootSuccessor.offset)
+            limit = find(pdf.stream.bytes, 'endobj', root.offset) + 6;
+        else
+            limit = rootSuccessor.offset;
+
+        var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
+
+        //since we signed the first one, we know how the pdf has to look like:
+        var offsetForm = find(array, '<<', startRoot) +2;
+
+        var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot);
+        var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+
         var annotEntry = findFreeXrefNr(pdf.xref.entries);
-
-        // we'll store all the modifications we make, as we need to adjust the offset in the PDF
-        // TODO: mejorar el limite.
-        let limit = rootSuccessor.offset;
-        if (root.offset == limit)
-            limit = pdf.stream.bytes.length - 1;
-
-        var offsetForm = find(pdf.stream.bytes, '<<', root.offset, limit) + 2;
-
-        //first we need to find the root element and add the following:
-        //
-        // /AcroForm<</Fields[{annotEntry} 0 R] /SigFlags 3>>
-        //
-        var appendAcroForm = '/AcroForm<</Fields['+annotEntry+' 0 R] /SigFlags 3>>';
-        //before we insert the acroform, we find the right place for annotentry
-
-        //we need to add Annots [x y R] to the /Type /Page section. We can do that by searching /Contents[
-        var pages = pdf.catalog.catDict.get('Pages');
-        //get first page, we have hidden sig, so don't bother
-        var ref = pages.get('Kids')[0];
-        var xref = pdf.xref.fetch(ref);
-        var offsetContentEnd = xref.get('#Contents_offset');
-        var offsetAnnots = xref.get('#Annots_offset');
-        var appendAnnots2 = ' '+annotEntry+' 0 R ';
-
-        //we now search backwards, this is safe as we don't expect user content here
-        var offsetContent = findBackwards(pdf.stream.bytes, '/Contents', offsetContentEnd);
-        var appendAnnots = '/Annots['+annotEntry+' 0 R]\n ';
-
-        //now insert string into stream
-        var array = insertIntoArray(pdf.stream.bytes, offsetForm, appendAcroForm);
-        //recalculate the offsets in the xref table, only update those that are affected
-        updateXrefOffset(pdf.xref, offsetForm, appendAcroForm.length);
-        offsetContent = updateOffset(offsetContent, offsetForm, appendAcroForm.length);
-        if (typeof offsetAnnots == 'number') {
-            var array = insertIntoArray(array, offsetAnnots, appendAnnots2);
-            updateXrefOffset(pdf.xref, offsetAnnots, appendAnnots2.length);
-        }  else {
-            var array = insertIntoArray(array, offsetContent, appendAnnots);
-            updateXrefOffset(pdf.xref, offsetContent, appendAnnots.length);
-        }
-        offsetContent = -1; //not needed anymore, don't update when offset changes
-
-        //Then add to the next free object (annotEntry)
-        //add right before the xref table or stream
-        //if its a table, place element before the xref table
-        //
-        // sigEntry is the ref to the signature content. Next we need the signature object
         var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
 
-        //
-        // {annotEntry} 0 obj
-        // <</F 132/Type/Annot/Subtype/Widget/Rect[0 0 0 0]/FT/Sig/DR<<>>/T(signature)/V Y 0 R>>
-        // endobj
-        //
+        var appendAnnot = ' ' + annotEntry + ' 0 R';
+        var appendAnnots = '/Annots['+annotEntry+' 0 R]\n ';
+
+        var appendAcroForm = '/AcroForm<</Fields['+annotEntry+' 0 R] /SigFlags 3>>';
+        var array = insertIntoArray(array, offsetForm, appendAcroForm);
+
+        // array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
+
+        //we need to add Annots [x y R] to the /Type /Page section. We can do that by searching /Annots
+        var pages = pdf.catalog.catDict.get('Pages');
+        //get first page, we have hidden sig, so don't bother
+        var contentRef = pages.get('Kids')[0]; // pages.get('Kids').length - 1
+        var xref = pdf.xref.fetch(contentRef);
+        // var offsetAnnotEnd = xref.get('#Annots_offset');
+        //we now search ], this is safe as we signed it previously
+        // var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
+        var xrefEntry = pdf.xref.getEntry(contentRef.num);
+        var xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+        // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
+        var startContent = array.length;
+        array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccosser.offset);
+
+        var offsetAnnot = find(array, '<<', startContent) + 2;
+
+
+        array = insertIntoArray(array, offsetAnnot, appendAnnots);
+
+        var startAnnot = array.length;
         var append = annotEntry + ' 0 obj\n<</F 132/Type/Annot/Subtype/Widget/Rect[0 0 0 0]/FT/Sig/DR<<>>/T(signature'+annotEntry+')/V '+sigEntry+' 0 R>>\nendobj\n\n';
+        array = insertIntoArray(array, startAnnot, append);
 
-        // we want the offset just before the last xref table or entry
-        var blocks = findXrefBlocks(pdf.xref.xrefBlocks);
-
-        var offsetAnnot = blocks[0].start;
-        array = insertIntoArray(array, offsetAnnot, append);
-        //no updateXrefOffset, as the next entry will be following
-
-        //
-        // {sigEntry} 0 obj
-        // <</Contents <0481801e6d931d561563fb254e27c846e08325570847ed63d6f9e35 ... b2c8788a5>
-        // /Type/Sig/SubFilter/adbe.pkcs7.detached/Location(Ghent)/M(D:20120928104114+02'00')
-        // /ByteRange [A B C D]/Filter/Adobe.PPKLite/Reason(Test)/ContactInfo()>>
-        // endobj
-        //
-
-        //the next entry goes below the above
-        var offsetSig = offsetAnnot + append.length;
-
-        // Both {annotEntry} and {sigEntry} objects need to be added to the last xref table. The byte range needs
-        // to be adjusted. Since the signature will always be in a gap, use first an empty sig
-        // to check the size, add ~25% size, then calculate the signature and place in the empty
-        // space.
+        var startSig = array.length;
         var start = sigEntry+ ' 0 obj\n<</Contents <';
-        // TODO: Calcular tamaño de la firma
+        //TODO: Adobe thinks its important to have the right size, no idea why this is the case
         var crypto = new Array(round256(1024 * 6)).join( '0' );
-        var middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:'
-            +now(date)+'\')\n/ByteRange ';
+        var middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:'+now(date)+'\')\n/ByteRange ';
         var byteRange = '[0000000000 0000000000 0000000000 0000000000]';
         var end = '/Filter/Adobe.PPKLite/Reason()/ContactInfo()>>\nendobj\n\n';
         //all together
         var append2 = start+crypto+middle+byteRange+end;
-        var offsetByteRange = start.length+crypto.length+middle.length;
-
-        array = insertIntoArray(array, offsetSig, append2);
-        updateXrefOffset(pdf.xref, offsetAnnot,
-                         append2.length + append.length);
-
-        //find the xref tables, remove them and also the EOF, as we'll write a new table
-        var xrefBlocks = findXrefBlocks(pdf.xref.xrefBlocks);
-
-        for(var i in xrefBlocks) {
-            var oldSize = array.length;
-            array = removeFromArray(array, xrefBlocks[i].start,
-                                    xrefBlocks[i].end);
-            var length = array.length - oldSize;
-            updateXrefOffset(pdf.xref, xrefBlocks[i].start, length);
-
-            //check for %%EOF and remove it as well
-            var offsetEOF = find(array, '%%EOF',
-                                 xrefBlocks[i].start,
-                                 xrefBlocks[i].start+20);
-            if(offsetEOF > 0) {
-                var lengthEOF = '%%EOF'.length;
-                array = removeFromArray(array, offsetEOF,
-                                        offsetEOF + lengthEOF);
-                updateXrefOffset(pdf.xref, offsetEOF, -lengthEOF);
-                updateXrefBlocks(xrefBlocks, offsetEOF, -lengthEOF);
-                offsetAnnot = updateOffset(offsetAnnot,
-                                           offsetEOF, -lengthEOF);
-                offsetSig = updateOffset(offsetSig, offsetEOF, -lengthEOF);
-            }
-            updateXrefBlocks(xrefBlocks, xrefBlocks[i].start, length);
-            offsetAnnot = updateOffset(offsetAnnot,
-                                       xrefBlocks[i].start, length);
-            offsetSig = updateOffset(offsetSig,
-                                     xrefBlocks[i].start, length);
-        }
+        array = insertIntoArray(array, startSig, append2);
 
         let sha256Buffer = await webcrypto.subtle.digest('SHA-256', array);
         let sha256Hex = pvutils.bufferToHexCodes(sha256Buffer);
 
-        //add the new entries to the xref
-        pdf.xref.entries[annotEntry] = {offset:offsetAnnot, gen:0, free:false};
-        pdf.xref.entries[sigEntry] = {offset:offsetSig, gen:0, free:false};
+        var prev = findBackwards(array, 'startxref', array.length-1);
+        prev = findBackwards(array, 'xref', prev);
 
-        ////////////////////
-        var xrefTable = createXrefTable(pdf.xref.entries);
-        //also empty entries count as in the PDF spec, page 720 (example)
-        xrefTable += createTrailer(pdf.xref.topDict, array.length,
-                                   sha256Hex, pdf.xref.entries.length);
+        // var prev = pdf.xref.xrefBlocks[0];
+
+        var startxref = array.length;
+        var xrefEntries = [];
+        xrefEntries[0] = {offset:0, gen:65535, free:true};
+        xrefEntries[pdf.xref.topDict.getRaw('Root').num] = {offset:startRoot, gen:0, free:false};
+        xrefEntries[contentRef.num] = {offset:startContent, gen:0, free:false};
+        xrefEntries[annotEntry] = {offset:startAnnot, gen:0, free:false};
+        xrefEntries[sigEntry] = {offset:startSig, gen:0, free:false};
+        var xrefTable = createXrefTableAppend(xrefEntries);
+        xrefTable += createTrailer(pdf.xref.topDict, startxref, sha256Hex, xrefEntries.length, prev);
         array = insertIntoArray(array, array.length, xrefTable);
 
-        //since we consolidate, no prev! [adjust /Prev -> rawparsing + offset]
         var from1 = 0;
-        var to1 = offsetSig+start.length;
+        var to1 = startSig + start.length;
         var from2 = to1 + crypto.length;
         var to2 = (array.length - from2) - 1;
-        var byteRange = '['+pad10(from1)+' '+pad10(to1 - 1)
-            + ' ' +pad10(from2 + 1)+ ' ' + pad10(to2) + ']';
-        array = updateArray(array, (offsetSig + offsetByteRange),
-                            byteRange);
+        var byteRange = '['+pad10(from1)+' '+pad10(to1 - 1) + ' ' +pad10(from2 + 1)+ ' ' + pad10(to2) + ']';
+
+        array = updateArray(array, from2 + middle.length, byteRange);
 
         return [array, [from1, to1 - 1, from2 +1, to2]];
     }
-
     async function appendSig(webcrypto, pdf, root, rootSuccessor, date, password) {
         //copy root and the entry with contents to the end
         var startRoot = pdf.stream.bytes.length + 1;
@@ -513,10 +449,15 @@ var PDFSIGN = (function () {
         //get first page, we have hidden sig, so don't bother
         var contentRef = pages.get('Kids')[0];
         var xref = pdf.xref.fetch(contentRef);
-        var offsetAnnotEnd = xref.get('#Annots_offset');
+
+
         //we now search ], this is safe as we signed it previously
-        var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
+
         var xrefEntry = pdf.xref.getEntry(contentRef.num);
+        // var offsetAnnotEnd = xref.get('#Annots_offset');
+        var offsetAnnotEnd = find(array, '/Annots',xrefEntry.offset);
+        var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
+
         var xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
         var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
         var startContent = array.length;
@@ -541,7 +482,12 @@ var PDFSIGN = (function () {
         let sha256Buffer = await webcrypto.subtle.digest('SHA-256', array);
         let sha256Hex = pvutils.bufferToHexCodes(sha256Buffer);
 
-        var prev = pdf.xref.xrefBlocks[0];
+
+        var prev = findBackwards(array, 'startxref', array.length-1);
+        prev = findBackwards(array, 'xref', prev);
+
+        // var prev = pdf.xref.xrefBlocks[0];
+
         var startxref = array.length;
         var xrefEntries = [];
         xrefEntries[0] = {offset:0, gen:65535, free:true};
