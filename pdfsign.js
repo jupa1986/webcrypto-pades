@@ -3,6 +3,7 @@
  * https://github.com/Communication-Systems-Group/pdfsign.js
  *
  * Copyright 2015, Thomas Bocek, University of Zurich
+ * Copyright 2018, Juan Carlos Canaza Ayarachi, jccarlos.a@gmail.com
  *
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/MIT
@@ -315,7 +316,6 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
 
     var appendAnnot = ' ' + annotEntry + ' 0 R';
-    var appendAnnots = '/Annots['+annotEntry+' 0 R]\n ';
 
     var appendAcroForm = '/AcroForm<</Fields['+annotEntry+' 0 R] /SigFlags 3>>';
     var array = insertIntoArray(array, offsetForm, appendAcroForm);
@@ -333,13 +333,20 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var xrefEntry = pdf.xref.getEntry(contentRef.num);
     var xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
     // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
+
     var startContent = array.length;
     array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccosser.offset);
+    // Find /Annots
+    var offsetAnnot = find(array, '/Annots', startContent);
 
-    var offsetAnnot = find(array, '<<', startContent) + 2;
+    if (offsetAnnot < 0) {
+        offsetAnnot = find(array, '<<', startContent) + 2;
+        appendAnnot = '/Annots['+appendAnnot+']\n ';
+    } else {
+        offsetAnnot = find(array, ']', offsetAnnot); // TODO
+    }
 
-
-    array = insertIntoArray(array, offsetAnnot, appendAnnots);
+    array = insertIntoArray(array, offsetAnnot, appendAnnot);
 
     var startAnnot = array.length;
     var append = annotEntry + ' 0 obj\n<</F 132/Type/Annot/Subtype/Widget/Rect[0 0 0 0]/FT/Sig/DR<<>>/T(signature'+annotEntry+')/V '+sigEntry+' 0 R>>\nendobj\n\n';
