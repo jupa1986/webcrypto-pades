@@ -8,12 +8,9 @@
  * http://www.opensource.org/licenses/MIT
  */
 
-//using the object if available or creating a new instance if not present
-
 var pvutils = require('pvutils');
 
 var PDFDocument;
-
 
 function createXrefTable(xrefEntries) {
     xrefEntries = sortOnKeys(xrefEntries);
@@ -103,15 +100,6 @@ function removeFromArray(array, from, to) {
 		buf[i-cutlen] = array[i];
     }
     return buf;
-}
-
-function findXrefBlocks(xrefBlocks) {
-    var num = xrefBlocks.length / 2;
-    var retVal = [];
-    for (var i=0;i<num;i++) {
-        retVal.push({start: xrefBlocks[i], end: xrefBlocks[i+num]});
-    }
-    return retVal;
 }
 
 function pad10(num) {
@@ -269,37 +257,6 @@ function isSigInRoot(pdf) {
     return pdf.acroForm.get('SigFlags') === 3;
 }
 
-function updateXrefOffset(xref, offset, offsetDelta) {
-    for(var i in xref.entries) {
-        if(xref.entries[i].offset >= offset) {
-            xref.entries[i].offset += offsetDelta;
-        }
-    }
-    for(var i in xref.xrefBlocks) {
-        if(xref.xrefBlocks[i] >= offset) {
-            xref.xrefBlocks[i]  += offsetDelta;
-        }
-    }
-}
-
-function updateXrefBlocks(xrefBlocks, offset, offsetDelta) {
-    for(var i in xrefBlocks) {
-        if(xrefBlocks[i].start >= offset) {
-            xrefBlocks[i].start += offsetDelta;
-        }
-        if(xrefBlocks[i].end >= offset) {
-            xrefBlocks[i].end += offsetDelta;
-        }
-    }
-}
-
-function updateOffset(pos, offset, offsetDelta) {
-    if(pos >= offset) {
-        return pos + offsetDelta;
-    }
-    return pos;
-}
-
 function round256(x) {
     return (Math.ceil(x/256)*256) - 1;
 }
@@ -405,8 +362,6 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var prev = findBackwards(array, 'startxref', array.length-1);
     prev = findBackwards(array, 'xref', prev);
 
-    // var prev = pdf.xref.xrefBlocks[0];
-
     var startxref = array.length;
     var xrefEntries = [];
     xrefEntries[0] = {offset:0, gen:65535, free:true};
@@ -485,8 +440,6 @@ async function appendSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
     var prev = findBackwards(array, 'startxref', array.length-1);
     prev = findBackwards(array, 'xref', prev);
-
-    // var prev = pdf.xref.xrefBlocks[0];
 
     var startxref = array.length;
     var xrefEntries = [];
