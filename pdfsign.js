@@ -133,6 +133,7 @@ function findSuccessorEntry(xrefEntries, current) {
             if(xrefEntries[i].offset < currentMin) {
                 currentMin = xrefEntries[i].offset;
                 currentMinIndex = i;
+                break;
             }
         }
     }
