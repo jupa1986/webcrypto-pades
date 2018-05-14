@@ -1,8 +1,7 @@
-var pkijs = require("pkijs");
-var asn1js = require("asn1js");
-var pvutils = require('pvutils');
-
-const pdfsign = require('./pdfsign');
+import * as pkijs from "pkijs";
+import * as asn1js from "asn1js";
+import * as pvutils from "pvutils";
+import * as pdfsign from "./pdfsign.js"
 
 let trustedCertificates = []; // Array of Certificates
 
@@ -12,7 +11,7 @@ let asn2 = asn1js.fromBER(pvutils.stringToArrayBuffer(pvutils.fromBase64(CA64)))
 let CA = new pkijs.Certificate({ schema: asn2.result });
 trustedCertificates.push(CA);
 
-function certificateRaw(provider, certID) {
+export function certificateRaw(provider, certID) {
     return Promise.resolve()
         .then(function () {
             return provider.certStorage.getItem(certID)
@@ -25,7 +24,7 @@ function certificateRaw(provider, certID) {
         });
 }
 
-function keyFromCertificateId(type, provider, certID) {
+export function keyFromCertificateId(type, provider, certID) {
     return Promise.resolve()
         .then(function () {
             return provider.keyStorage.keys()
@@ -53,7 +52,7 @@ function keyFromCertificateId(type, provider, certID) {
         });
 }
 
-function firstProvider(ws) {
+export function firstProvider(ws) {
     return listProviders(ws).then((providers) => {
         if (providers.length > 0)
             return ws.getCrypto(providers[0]);
@@ -62,7 +61,7 @@ function firstProvider(ws) {
     });
 }
 
-function listProviders(ws) {
+export function listProviders(ws) {
     return ws.info()
         .then(function (info) {
             let providers = [];
@@ -75,7 +74,7 @@ function listProviders(ws) {
         });
 }
 
-function listCertificates(provider) {
+export function listCertificates(provider) {
     let certIDs, keyIDs;
     return Promise.resolve()    // Habilitar en el navegador
         .then(function () {
@@ -123,7 +122,7 @@ function listCertificates(provider) {
         });
 }
 
-function createCMSSigned(data, certSimpl, key) {
+export function createCMSSigned(data, certSimpl, key) {
 
     let cmsSignedSimpl = new pkijs.SignedData({
         version: 1,
@@ -165,11 +164,11 @@ function createCMSSigned(data, certSimpl, key) {
     });
 }
 
-function issuerCertificate() {
+export function issuerCertificate() {
     return CA;
 }
 
-function signpdf(pdfRaw, key, certificate) {
+export function signpdf(pdfRaw, key, certificate) {
     return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
         let data = pdfsign.removeFromArray(pdf, byteRange[1], byteRange[2]);
         return createCMSSigned(data, certificate, key).then((signature) => { // hex
@@ -235,7 +234,7 @@ async function createOCSPReq(serialNumbers) {
     return ocspReq;
 };
 
-async function listSignatures(pdf, ocspReq) {
+export async function listSignatures(pdf, ocspReq) {
     const result = {data:[]};
     pdf = pdfsign.parsePDF(pdf);
 
@@ -341,7 +340,7 @@ async function listSignatures(pdf, ocspReq) {
     return result;
 }
 
-function firstCertificate(provider) {
+export function firstCertificate(provider) {
     let certRaw;
     let certID;
 
@@ -372,19 +371,6 @@ function firstCertificate(provider) {
     return sequence;
 }
 
-function setEngine(nombre, provider) {
+export function setEngine(nombre, provider) {
     pkijs.setEngine(nombre, provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
 }
-
-exports.listCertificates = listCertificates;
-exports.listProviders = listProviders;
-exports.keyFromCertificateId = keyFromCertificateId;
-exports.certificateRaw = certificateRaw;
-exports.createCMSSigned = createCMSSigned;
-exports.signpdf = signpdf;
-
-exports.listSignatures = listSignatures;
-exports.firstCertificate = firstCertificate;
-exports.firstProvider = firstProvider;
-exports.setEngine = setEngine;
-exports.issuerCertificate = issuerCertificate;

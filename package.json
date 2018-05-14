@@ -2,8 +2,10 @@
   "name": "pdfjs-firma",
   "version": "0.0.1",
   "description": "Firma digital para documentos PDF",
-  "main": "index.js",
+  "main": "./build/index.js",
+  "module": "./src/index.js",
   "scripts": {
+    "build": "babel src --compact=false --out-dir build --source-maps",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,12 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "asn1js": "^2.0.19",
+    "babel-preset-env": "^1.7.0",
     "pkijs": "^2.1.46",
     "pvutils": "^1.0.12"
   },
   "devDependencies": {
-    "node-webcrypto-p11": "^1.2.3",
+    "babel-cli": "^6.26.0",
     "node-webcrypto-ossl": "^1.0.36",
+    "node-webcrypto-p11": "^1.2.3",
     "request": "^2.85.0"
   }
 }

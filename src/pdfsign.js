@@ -9,9 +9,9 @@
  * http://www.opensource.org/licenses/MIT
  */
 
-var pvutils = require('pvutils');
+import {bufferToHexCodes} from "pvutils";
 
-var PDFDocument;
+let PDFDocument;
 
 function createXrefTable(xrefEntries) {
     xrefEntries = sortOnKeys(xrefEntries);
@@ -90,7 +90,7 @@ function sortOnKeys(dict) {
     return tempDict;
 }
 
-function removeFromArray(array, from, to) {
+export function removeFromArray(array, from, to) {
     var cutlen = to - from;
     var buf = new Uint8Array(array.length - cutlen);
 
@@ -143,7 +143,7 @@ function findSuccessorEntry(xrefEntries, current) {
     return xrefEntries[currentMinIndex];
 }
 
-function updateArray(array, pos, str) {
+export function updateArray(array, pos, str) {
     var upd = stringToUint8Array(str);
     for (var i = 0, len=upd.length; i < len; i++) {
         array[i+pos] = upd[i];
@@ -368,7 +368,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     array = insertIntoArray(array, startSig, append2);
 
     let sha256Buffer = await webcrypto.subtle.digest('SHA-256', array);
-    let sha256Hex = pvutils.bufferToHexCodes(sha256Buffer);
+    let sha256Hex = bufferToHexCodes(sha256Buffer);
 
     var prev = findBackwards(array, 'startxref', array.length-1);
     prev = findBackwards(array, 'xref', prev);
@@ -395,7 +395,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     return [array, [from1, to1 - 1, from2 +1, to2]];
 }
 
-function signpdfEmpty(pdfRaw, crypto){
+export function signpdfEmpty(pdfRaw, crypto){
     const date = new Date();
 
     let pdf = parsePDF(pdfRaw);
@@ -405,7 +405,7 @@ function signpdfEmpty(pdfRaw, crypto){
     return newSig(crypto, pdf, root, rootSuccessor, date);
 }
 
-function parsePDF(pdfRaw) {
+export function parsePDF(pdfRaw) {
     if (pdfRaw instanceof ArrayBuffer)
         pdfRaw = new Uint8Array(pdfRaw);
 
@@ -415,12 +415,6 @@ function parsePDF(pdfRaw) {
     return pdf;
 }
 
-function setPDFDocument(_PDFDocument) {
+export function setPDFDocument(_PDFDocument) {
     PDFDocument = _PDFDocument;
 }
-
-exports.signpdfEmpty = signpdfEmpty;
-exports.parsePDF = parsePDF;
-exports.removeFromArray = removeFromArray;
-exports.updateArray = updateArray;
-exports.setPDFDocument = setPDFDocument;
