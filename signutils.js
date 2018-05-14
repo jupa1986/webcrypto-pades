@@ -165,6 +165,10 @@ function createCMSSigned(data, certSimpl, key) {
     });
 }
 
+function issuerCertificate() {
+    return CA;
+}
+
 function signpdf(pdfRaw, key, certificate) {
     return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
         let data = pdfsign.removeFromArray(pdf, byteRange[1], byteRange[2]);
@@ -383,3 +387,4 @@ exports.listSignatures = listSignatures;
 exports.firstCertificate = firstCertificate;
 exports.firstProvider = firstProvider;
 exports.setEngine = setEngine;
+exports.issuerCertificate = issuerCertificate;

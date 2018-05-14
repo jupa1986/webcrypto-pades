@@ -17,3 +17,4 @@ exports.removeFromArray = pdfsign.removeFromArray;
 exports.updateArray = pdfsign.updateArray;
 exports.setPDFDocument = pdfsign.setPDFDocument;
 exports.setEngine = signutils.setEngine;
+exports.issuerCertificate = signutils.issuerCertificate;
