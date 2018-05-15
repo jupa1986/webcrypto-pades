@@ -61,7 +61,7 @@ var createOCSPReq = function () {
 
 var listSignatures = exports.listSignatures = function () {
     var _ref4 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(pdf, ocspReq) {
-        var result, sigFields, serialNumbers, i, data, sigField, v, byteRange, contents, contentBuffer, asn1, cmsContentSimp, cmsSignedSimp, certificate, subFilter, filter, date, pattern, signedDataBuffer, ocspReqBuffer, _ref5, _ref6, _asn, ocspRespSimpl, ocspBasicResp, asn1Basic, _loop, _i;
+        var result, sigFields, serialNumbers, i, data, sigField, v, byteRange, contents, contentBuffer, asn1, cmsContentSimp, cmsSignedSimp, certificate, subFilter, filter, date, pattern, signedDataBuffer, ocspReqBuffer, ocspResult, statusCode, ocspResBuffer, _asn, ocspRespSimpl, ocspBasicResp, asn1Basic, _loop, _i;
 
         return regeneratorRuntime.wrap(function _callee2$(_context2) {
             while (1) {
@@ -143,7 +143,7 @@ var listSignatures = exports.listSignatures = function () {
                         ocspReqBuffer = _context2.sent.toSchema(true).toBER(false);
 
                         if (!(ocspReq != undefined && typeof ocspReq == 'function')) {
-                            _context2.next = 58;
+                            _context2.next = 57;
                             break;
                         }
 
@@ -152,10 +152,9 @@ var listSignatures = exports.listSignatures = function () {
                         return ocspReq(ocspReqBuffer);
 
                     case 45:
-                        _ref5 = _context2.sent;
-                        _ref6 = _slicedToArray(_ref5, 2);
-                        statusCode = _ref6[0];
-                        ocspResBuffer = _ref6[1];
+                        ocspResult = _context2.sent;
+                        statusCode = ocspResult[0];
+                        ocspResBuffer = ocspResult[1];
                         _asn = asn1js.fromBER(ocspResBuffer);
                         ocspRespSimpl = new pkijs.OCSPResponse({ schema: _asn.result });
                         ocspBasicResp = void 0;
@@ -193,25 +192,25 @@ var listSignatures = exports.listSignatures = function () {
                                 // ERROR
                             }
                         }
-                        _context2.next = 58;
+                        _context2.next = 57;
                         break;
 
-                    case 55:
-                        _context2.prev = 55;
+                    case 54:
+                        _context2.prev = 54;
                         _context2.t2 = _context2["catch"](42);
 
                         // OCSP no disponible
                         console.log("OCSP no disponible:", _context2.t2);
 
-                    case 58:
+                    case 57:
                         return _context2.abrupt("return", result);
 
-                    case 59:
+                    case 58:
                     case "end":
                         return _context2.stop();
                 }
             }
-        }, _callee2, this, [[42, 55]]);
+        }, _callee2, this, [[42, 54]]);
     }));
 
     return function listSignatures(_x2, _x3) {

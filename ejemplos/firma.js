@@ -1,9 +1,11 @@
+require("babel-polyfill");
+
 const wcp11 = require("node-webcrypto-p11");
 const pkijs = require("pkijs");
 const asn1js = require("asn1js");
 const fs = require('fs');
 const pvutils = require('pvutils');
-const pdfsign = require('../index');
+const pdfsign = require('../');
 
 var PDFDocument = require("./simple/src/pdf.worker.min").PDFDocument;
 

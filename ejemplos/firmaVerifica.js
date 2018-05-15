@@ -1,7 +1,9 @@
+require("babel-polyfill");
+
 const WebCrypto = require("node-webcrypto-ossl");
 const wcp11 = require("node-webcrypto-p11");
 const streams = require('memory-streams');
-const pdfsign = require("../index");
+const pdfsign = require("../");
 const request = require("request");
 const pkijs = require("pkijs");
 const fs = require("fs");
@@ -61,6 +63,7 @@ function HTTPOCSPRequest(ocspReqBuffer) {
     return new Promise((resolve, reject) => {
         request(options, (err, res) => {
             if(!err) {
+                console.log(res.statusCode);
                 let ocspResBuffer = new Uint8Array(writeStream.toBuffer()).buffer;
                 resolve([res.statusCode, ocspResBuffer]);
             } else {

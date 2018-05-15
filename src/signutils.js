@@ -294,7 +294,9 @@ export async function listSignatures(pdf, ocspReq) {
 
     if (ocspReq != undefined && typeof ocspReq == 'function'){
         try {
-            [statusCode, ocspResBuffer] = await ocspReq(ocspReqBuffer);
+            let ocspResult = await ocspReq(ocspReqBuffer);
+            let statusCode = ocspResult[0];
+            let ocspResBuffer = ocspResult[1];
 
             const asn1 = asn1js.fromBER(ocspResBuffer);
             const ocspRespSimpl = new pkijs.OCSPResponse({ schema: asn1.result });
