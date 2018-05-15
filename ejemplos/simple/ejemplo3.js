@@ -19,18 +19,22 @@ $file.onchange = function (ev) {
         let sequence = pdffirma.listarFirmas(pdfBuffer).then((firmas) => {
             // listar todas las firmas
             for (let i in firmas.data) {
-                let certificado = firmas.data[i].certificado;
+                let data = firmas.data[i];
 
-                let val = certificado.subject.typesAndValues.find((val) => {
-                    return val.type == "2.5.4.3";
-                });
-
-                if (val) {
-                    let subjectName = val.value.valueBlock.value;
-
-                    $("resultado").innerHTML += "<p> <b>Firmado por: </b>" + subjectName + "</p>";
-
+                // Issuer
+                for ( let i in data.certificado.issuer.typesAndValues) {
+                    var tav = data.certificado.issuer.typesAndValues[i];
+                    $("resultado").innerHTML += "<p> <b> "+ tav.type +" </b>" +
+                        tav.value.valueBlock.value + "</p>";
                 }
+                // Subject
+                for ( let i in data.certificado.subject.typesAndValues) {
+                    var tav = data.certificado.subject.typesAndValues[i];
+
+                    $("resultado").innerHTML += "<p> <b> "+ tav.type +" </b>" +
+                        tav.value.valueBlock.value + "</p>";
+                }
+
             }
         }).catch((err) => {
             alert(err);
