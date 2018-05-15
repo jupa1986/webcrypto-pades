@@ -6,6 +6,23 @@ function $(id) {
     return result;
 }
 
+// No 'Access-Control-Allow-Origin' header is present on the requested resource.
+// function HTTPOCSPRequest(ocspReqBuffer) {
+//     return new Promise(function (resolve, reject) {
+//         let url = "http://firmadigital.bo/ocsp/";
+
+//         var xhr = new XMLHttpRequest();
+//         xhr.withCredentials = true;
+//         xhr.responseType='arraybuffer';
+//         xhr.open("POST", url, true);
+//         xhr.onload = function(e) {
+//             resolve([200, e.response]);
+//         }
+//         xhr.onerror = reject;
+//         xhr.send(ocspReqBuffer);
+//     });
+// }
+
 var $file = $("pdfFile");
 
 $file.onchange = function (ev) {
@@ -34,8 +51,13 @@ $file.onchange = function (ev) {
                     $("resultado").innerHTML += "<p> <b> "+ tav.type +" </b>" +
                         tav.value.valueBlock.value + "</p>";
                 }
-
+                delete data.certificado;
+                for (let i in data) {
+                    $("resultado").innerHTML += "<p> <b> "+ i +" </b>" +
+                        data[i] + "</p>";
+                }
             }
+
         }).catch((err) => {
             alert(err);
         });
