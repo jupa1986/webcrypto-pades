@@ -324,6 +324,9 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     //get first page, we have hidden sig, so don't bother
     var contentRef = pages.get('Kids')[0]; // pages.get('Kids').length - 1
     var xref = pdf.xref.fetch(contentRef);
+    if (xref.get('Kids') != undefined) {
+        contentRef = xref.get('Kids')[0];
+    }
     // var offsetAnnotEnd = xref.get('#Annots_offset');
     //we now search ], this is safe as we signed it previously
     // var endOffsetAnnot = find(array, ']', offsetAnnotEnd);

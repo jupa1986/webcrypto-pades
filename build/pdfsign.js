@@ -44,10 +44,13 @@ var newSig = function () {
                         contentRef = pages.get('Kids')[0]; // pages.get('Kids').length - 1
 
                         xref = pdf.xref.fetch(contentRef);
+
+                        if (xref.get('Kids') != undefined) {
+                            contentRef = xref.get('Kids')[0];
+                        }
                         // var offsetAnnotEnd = xref.get('#Annots_offset');
                         //we now search ], this is safe as we signed it previously
                         // var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
-
                         xrefEntry = pdf.xref.getEntry(contentRef.num);
                         xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
                         // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
@@ -87,10 +90,10 @@ var newSig = function () {
 
                         array = insertIntoArray(array, startSig, append2);
 
-                        _context.next = 32;
+                        _context.next = 33;
                         return webcrypto.subtle.digest('SHA-256', array);
 
-                    case 32:
+                    case 33:
                         sha256Buffer = _context.sent;
                         sha256Hex = (0, _pvutils.bufferToHexCodes)(sha256Buffer);
                         prev = findBackwards(array, 'startxref', array.length - 1);
@@ -121,7 +124,7 @@ var newSig = function () {
 
                         return _context.abrupt('return', [array, [from1, to1 - 1, from2 + 1, to2]]);
 
-                    case 53:
+                    case 54:
                     case 'end':
                         return _context.stop();
                 }
@@ -441,6 +444,8 @@ function signpdfEmpty(pdfRaw, crypto) {
 
     var pdf = parsePDF(pdfRaw);
     var root = findRootEntry(pdf.xref);
+
+    if (typeof root.uncompressed == 'undefined') throw new Error("PDF no soportado!");
 
     var rootSuccessor = findSuccessorEntry(pdf.xref.entries, root);
     return newSig(crypto, pdf, root, rootSuccessor, date);
