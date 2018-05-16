@@ -277,14 +277,21 @@ function findRootEntry(xref) {
 
 function findSuccessorEntry(xrefEntries, current) {
     //find it first
-    var index = 0;
-    var result = xrefEntries.find(function (entry) {
-        index++;
-        return current == entry;
-    });
-    if (index == xrefEntries.length) return current;
-
-    return xrefEntries[index];
+    var currentOffset = current.offset;
+    var currentMin = Number.MAX_SAFE_INTEGER;
+    var currentMinIndex = -1;
+    for (var i in xrefEntries) {
+        if (xrefEntries[i].offset > currentOffset) {
+            if (xrefEntries[i].offset < currentMin) {
+                currentMin = xrefEntries[i].offset;
+                currentMinIndex = i;
+            }
+        }
+    }
+    if (currentMinIndex === -1) {
+        return current;
+    }
+    return xrefEntries[currentMinIndex];
 }
 
 function updateArray(array, pos, str) {

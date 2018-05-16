@@ -125,15 +125,21 @@ function findRootEntry(xref) {
 
 function findSuccessorEntry(xrefEntries, current) {
     //find it first
-    let index = 0;
-    let result = xrefEntries.find((entry) => {
-        index++;
-        return current == entry;
-    });
-    if (index == xrefEntries.length)
+    var currentOffset = current.offset;
+    var currentMin = Number.MAX_SAFE_INTEGER;
+    var currentMinIndex = -1;
+    for(var i in xrefEntries) {
+        if(xrefEntries[i].offset > currentOffset) {
+            if(xrefEntries[i].offset < currentMin) {
+                currentMin = xrefEntries[i].offset;
+                currentMinIndex = i;
+            }
+        }
+    }
+    if(currentMinIndex === -1) {
         return current;
-
-    return xrefEntries[index];
+    }
+    return xrefEntries[currentMinIndex];
 }
 
 export function updateArray(array, pos, str) {
