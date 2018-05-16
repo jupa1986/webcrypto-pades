@@ -14,7 +14,7 @@ var newSig = function () {
                         //copy root and the entry with contents to the end
                         startRoot = pdf.stream.bytes.length + 1;
 
-                        if (root.offset == rootSuccessor.offset) limit = find(pdf.stream.bytes, 'endobj', root.offset) + 6;else limit = rootSuccessor.offset;
+                        if (root.offset == rootSuccessor.offset) limit = find(pdf.stream.bytes, 'endobj', root.offset) + 7;else limit = rootSuccessor.offset;
 
                         array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
 
@@ -274,22 +274,14 @@ function findRootEntry(xref) {
 
 function findSuccessorEntry(xrefEntries, current) {
     //find it first
-    var currentOffset = current.offset;
-    var currentMin = Number.MAX_SAFE_INTEGER;
-    var currentMinIndex = -1;
-    for (var i in xrefEntries) {
-        if (xrefEntries[i].offset > currentOffset) {
-            if (xrefEntries[i].offset < currentMin) {
-                currentMin = xrefEntries[i].offset;
-                currentMinIndex = i;
-                break;
-            }
-        }
-    }
-    if (currentMinIndex === -1) {
-        return current;
-    }
-    return xrefEntries[currentMinIndex];
+    var index = 0;
+    var result = xrefEntries.find(function (entry) {
+        index++;
+        return current == entry;
+    });
+    if (index == xrefEntries.length) return current;
+
+    return xrefEntries[index];
 }
 
 function updateArray(array, pos, str) {
@@ -466,4 +458,3 @@ function parsePDF(pdfRaw) {
 function setPDFDocument(_PDFDocument) {
     PDFDocument = _PDFDocument;
 }
-//# sourceMappingURL=pdfsign.js.map

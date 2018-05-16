@@ -125,22 +125,15 @@ function findRootEntry(xref) {
 
 function findSuccessorEntry(xrefEntries, current) {
     //find it first
-    var currentOffset = current.offset;
-    var currentMin = Number.MAX_SAFE_INTEGER;
-    var currentMinIndex = -1;
-    for(var i in xrefEntries) {
-        if(xrefEntries[i].offset > currentOffset) {
-            if(xrefEntries[i].offset < currentMin) {
-                currentMin = xrefEntries[i].offset;
-                currentMinIndex = i;
-                break;
-            }
-        }
-    }
-    if(currentMinIndex === -1) {
+    let index = 0;
+    let result = xrefEntries.find((entry) => {
+        index++;
+        return current == entry;
+    });
+    if (index == xrefEntries.length)
         return current;
-    }
-    return xrefEntries[currentMinIndex];
+
+    return xrefEntries[index];
 }
 
 export function updateArray(array, pos, str) {
@@ -301,7 +294,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
     var limit;
     if (root.offset == rootSuccessor.offset)
-        limit = find(pdf.stream.bytes, 'endobj', root.offset) + 6;
+        limit = find(pdf.stream.bytes, 'endobj', root.offset) + 7;
     else
         limit = rootSuccessor.offset;
 

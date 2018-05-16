@@ -25,4 +25,3 @@ exports.issuerCertificate = _signutils.issuerCertificate;
 exports.listarFirmas = _signutils.listSignatures;
 exports.primerCertificado = _signutils.firstCertificate;
 exports.primerProveedor = _signutils.firstProvider;
-//# sourceMappingURL=index.js.map

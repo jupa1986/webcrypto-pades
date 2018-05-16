@@ -466,4 +466,3 @@ function firstCertificate(provider) {
 function setEngine(nombre, provider) {
     pkijs.setEngine(nombre, provider, new pkijs.CryptoEngine({ name: 'local', crypto: provider, subtle: provider.subtle }));
 }
-//# sourceMappingURL=signutils.js.map
