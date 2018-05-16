@@ -394,6 +394,9 @@ export function signpdfEmpty(pdfRaw, crypto){
     let pdf = parsePDF(pdfRaw);
     var root = findRootEntry(pdf.xref);
 
+    if (typeof root.uncompressed == 'undefined')
+        throw new Error("PDF no soportado!");
+
     var rootSuccessor = findSuccessorEntry(pdf.xref.entries, root);
     return newSig(crypto, pdf, root, rootSuccessor, date);
 }
