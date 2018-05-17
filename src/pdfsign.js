@@ -129,6 +129,8 @@ function findSuccessorEntry(xrefEntries, current) {
     var currentMin = Number.MAX_SAFE_INTEGER;
     var currentMinIndex = -1;
     for(var i in xrefEntries) {
+        if(typeof xrefEntries[i].uncompressed != 'boolean')
+            continue;
         if(xrefEntries[i].offset > currentOffset) {
             if(xrefEntries[i].offset < currentMin) {
                 currentMin = xrefEntries[i].offset;

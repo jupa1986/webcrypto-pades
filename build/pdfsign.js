@@ -328,6 +328,7 @@ function findSuccessorEntry(xrefEntries, current) {
     var currentMin = Number.MAX_SAFE_INTEGER;
     var currentMinIndex = -1;
     for (var i in xrefEntries) {
+        if (typeof xrefEntries[i].uncompressed != 'boolean') continue;
         if (xrefEntries[i].offset > currentOffset) {
             if (xrefEntries[i].offset < currentMin) {
                 currentMin = xrefEntries[i].offset;
@@ -509,7 +510,6 @@ function parsePDF(pdfRaw) {
     if (pdfRaw instanceof ArrayBuffer) pdfRaw = new Uint8Array(pdfRaw);
     var pdf = new PDFDocument({ evaluatorOptions: {} }, pdfRaw);
     try {
-
         pdf.parseStartXRef();
         pdf.parse();
     } catch (err) {
