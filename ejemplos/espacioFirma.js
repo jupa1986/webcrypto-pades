@@ -1,6 +1,6 @@
 require("babel-polyfill");
 
-const PDFDocument = require("./simple/src/pdf.worker.min").PDFDocument;
+var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
 const WebCrypto = require("node-webcrypto-ossl");
 const pdfsign = require('../');
 const pkijs = require("pkijs");

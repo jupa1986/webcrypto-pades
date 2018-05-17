@@ -7,7 +7,7 @@ const fs = require('fs');
 const pvutils = require('pvutils');
 const pdfsign = require('../');
 
-var PDFDocument = require("./simple/src/pdf.worker.min").PDFDocument;
+var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
 
 pdfsign.setPDFDocument(PDFDocument);
 

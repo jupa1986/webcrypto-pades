@@ -1,5 +1,6 @@
 require("babel-polyfill");
 
+var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
 const WebCrypto = require("node-webcrypto-ossl");
 const wcp11 = require("node-webcrypto-p11");
 const streams = require('memory-streams');
@@ -17,7 +18,6 @@ const config = {
     pin: "12345678"
 };
 
-var PDFDocument = require("./simple/src/pdf.worker.min").PDFDocument;
 pdfsign.setPDFDocument(PDFDocument);
 
 let sequence = Promise.resolve();
