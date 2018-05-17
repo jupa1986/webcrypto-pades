@@ -313,6 +313,11 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
     var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot);
 
+    offsetAcroForm = find(array, '/AcroForm', startRoot);
+    // TODO: fixme
+    if (offsetAcroForm > 0)
+        throw new Error("PDF no soportado!");
+
     var annotEntry = findFreeXrefNr(pdf.xref.entries);
     var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
 
