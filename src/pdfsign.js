@@ -337,13 +337,23 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     //we now search ], this is safe as we signed it previously
     // var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
     var xrefEntry = pdf.xref.getEntry(contentRef.num);
+    if (typeof xrefEntry.uncompressed == 'undefined')
+        throw new Error("PDF no soportado!");
     var xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
     // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
 
     var startContent = array.length;
+    let offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccosser.offset);
+    if (offsetAnnot > 0) {
+        offsetAnnot +=7;
+        let offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccosser.offset);
+        let offsetAnnotPartial = find(array, ']', offsetAnnot, offsetAnnotEnd);
+        if (offsetAnnotPartial < 0)
+            throw new Error("PDF no soportado!");
+    }
     array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccosser.offset);
     // Find /Annots
-    var offsetAnnot = find(array, '/Annots', startContent);
+    offsetAnnot = find(array, '/Annots', startContent);
 
     if (offsetAnnot < 0) {
         offsetAnnot = find(array, '<<', startContent) + 2;
@@ -373,7 +383,21 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     let sha256Hex = bufferToHexCodes(sha256Buffer);
 
     var prev = findBackwards(array, 'startxref', array.length-1);
-    prev = findBackwards(array, 'xref', prev);
+    // prev = findBackwards(array, 'xref', prev);
+    //TODO: fixme
+    var eof = find(array, '%%EOF', prev);
+    var buffer = new ArrayBuffer(eof - prev);
+    var ubuffer = new Uint8Array(buffer);
+    let j = 0;
+    for(let i = prev; i < eof; i++)
+        ubuffer[j++] = array[i]
+    let prevStr = String.fromCharCode.apply(null, ubuffer);
+    var xrefOffset = parseInt(prevStr.match(/\d+/)[0]);
+    if (find(array, 'xref', xrefOffset, xrefOffset + 7) < 0)
+        throw new Error("PDF no soportado!");
+
+
+    prev = xrefOffset;
 
     var startxref = array.length;
     var xrefEntries = [];
@@ -413,10 +437,13 @@ export function signpdfEmpty(pdfRaw, crypto){
 export function parsePDF(pdfRaw) {
     if (pdfRaw instanceof ArrayBuffer)
         pdfRaw = new Uint8Array(pdfRaw);
-
     let pdf = new PDFDocument({evaluatorOptions:{}}, pdfRaw);
-    pdf.parseStartXRef();
-    pdf.parse();
+    try {
+        pdf.parseStartXRef();
+        pdf.parse();
+    } catch(err) {
+        throw new Error("PDF no soportado!");
+    }
     return pdf;
 }
 

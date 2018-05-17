@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var newSig = function () {
     var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(webcrypto, pdf, root, rootSuccessor, date, password) {
-        var startRoot, limit, array, offsetForm, offsetAcroForm, annotEntry, sigEntry, appendAnnot, appendAcroForm, endOffsetAcroForm, pages, contentRef, xref, xrefEntry, xrefEntrySuccosser, startContent, offsetAnnot, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, sha256Buffer, sha256Hex, prev, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
+        var startRoot, limit, array, offsetForm, offsetAcroForm, annotEntry, sigEntry, appendAnnot, appendAcroForm, endOffsetAcroForm, pages, contentRef, xref, xrefEntry, xrefEntrySuccosser, startContent, offsetAnnot, offsetAnnotEnd, offsetAnnotPartial, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, sha256Buffer, sha256Hex, prev, eof, buffer, ubuffer, j, i, prevStr, xrefOffset, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
         return regeneratorRuntime.wrap(function _callee$(_context) {
             while (1) {
                 switch (_context.prev = _context.next) {
@@ -52,15 +52,41 @@ var newSig = function () {
                         //we now search ], this is safe as we signed it previously
                         // var endOffsetAnnot = find(array, ']', offsetAnnotEnd);
                         xrefEntry = pdf.xref.getEntry(contentRef.num);
+
+                        if (!(typeof xrefEntry.uncompressed == 'undefined')) {
+                            _context.next = 16;
+                            break;
+                        }
+
+                        throw new Error("PDF no soportado!");
+
+                    case 16:
                         xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
                         // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
 
                         startContent = array.length;
+                        offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccosser.offset);
 
+                        if (!(offsetAnnot > 0)) {
+                            _context.next = 25;
+                            break;
+                        }
+
+                        offsetAnnot += 7;
+                        offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccosser.offset);
+                        offsetAnnotPartial = find(array, ']', offsetAnnot, offsetAnnotEnd);
+
+                        if (!(offsetAnnotPartial < 0)) {
+                            _context.next = 25;
+                            break;
+                        }
+
+                        throw new Error("PDF no soportado!");
+
+                    case 25:
                         array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccosser.offset);
                         // Find /Annots
                         offsetAnnot = find(array, '/Annots', startContent);
-
 
                         if (offsetAnnot < 0) {
                             offsetAnnot = find(array, '<<', startContent) + 2;
@@ -90,15 +116,36 @@ var newSig = function () {
 
                         array = insertIntoArray(array, startSig, append2);
 
-                        _context.next = 33;
+                        _context.next = 42;
                         return webcrypto.subtle.digest('SHA-256', array);
 
-                    case 33:
+                    case 42:
                         sha256Buffer = _context.sent;
                         sha256Hex = (0, _pvutils.bufferToHexCodes)(sha256Buffer);
                         prev = findBackwards(array, 'startxref', array.length - 1);
+                        // prev = findBackwards(array, 'xref', prev);
+                        //TODO: fixme
 
-                        prev = findBackwards(array, 'xref', prev);
+                        eof = find(array, '%%EOF', prev);
+                        buffer = new ArrayBuffer(eof - prev);
+                        ubuffer = new Uint8Array(buffer);
+                        j = 0;
+
+                        for (i = prev; i < eof; i++) {
+                            ubuffer[j++] = array[i];
+                        }prevStr = String.fromCharCode.apply(null, ubuffer);
+                        xrefOffset = parseInt(prevStr.match(/\d+/)[0]);
+
+                        if (!(find(array, 'xref', xrefOffset, xrefOffset + 7) < 0)) {
+                            _context.next = 54;
+                            break;
+                        }
+
+                        throw new Error("PDF no soportado!");
+
+                    case 54:
+
+                        prev = xrefOffset;
 
                         startxref = array.length;
                         xrefEntries = [];
@@ -124,7 +171,7 @@ var newSig = function () {
 
                         return _context.abrupt('return', [array, [from1, to1 - 1, from2 + 1, to2]]);
 
-                    case 54:
+                    case 72:
                     case 'end':
                         return _context.stop();
                 }
@@ -460,10 +507,14 @@ function signpdfEmpty(pdfRaw, crypto) {
 
 function parsePDF(pdfRaw) {
     if (pdfRaw instanceof ArrayBuffer) pdfRaw = new Uint8Array(pdfRaw);
-
     var pdf = new PDFDocument({ evaluatorOptions: {} }, pdfRaw);
-    pdf.parseStartXRef();
-    pdf.parse();
+    try {
+
+        pdf.parseStartXRef();
+        pdf.parse();
+    } catch (err) {
+        throw new Error("PDF no soportado!");
+    }
     return pdf;
 }
 

@@ -9,11 +9,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Carlos Canaza <jccarlos.a@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "asn1js": "^2.0.19",
-    "pkijs": "^2.1.46",
+    "pkijs": "2.1.46",
     "pvutils": "^1.0.12"
   },
   "devDependencies": {
@@ -22,6 +22,7 @@
     "memory-streams": "^0.1.3",
     "node-webcrypto-ossl": "^1.0.36",
     "node-webcrypto-p11": "^1.2.3",
+    "pdfjs-dist": "^2.0.489",
     "request": "^2.85.0"
   }
 }
