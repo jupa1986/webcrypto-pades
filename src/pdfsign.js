@@ -320,9 +320,15 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
         array = insertIntoArray(array, offsetForm, appendAcroForm);
     } else {
         var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
-        if (acroForm.get("Fields").length > 0 && pdf.acroForm.get('SigFlags') === 3) {
-            var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot); // TODO: fixme
-            var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+        if (acroForm.objId == null) {
+            var offsetAcroForm = find(array, '/AcroForm', startRoot); // TODO: fixme
+            offsetAcroForm = find(array, '/Fields', offsetAcroForm); // TODO: fixme
+            var offsetSigFlags = find(array, 'SigFlags', offsetFields);
+             var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+            if (offsetSigFlags < 0) {
+                array = insertIntoArray(array, endOffsetAcroForm + 1, '/SigFlags 3');
+            }
+
             array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
         } else {
             if (acroForm.objId != null){
@@ -366,10 +372,13 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
     var startContent = array.length;
     let offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccessor.offset);
+
     let subAnnots = false;
     if (offsetAnnot > 0) {
         offsetAnnot +=7;
         let offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccessor.offset);
+        if (offsetAnnotEnd < 0)
+            offsetAnnotEnd = find(array, '>>', offsetAnnot, xrefEntrySuccessor.offset);
         let offsetAnnotPartial = find(array, ']', offsetAnnot, offsetAnnotEnd);
 
         if (offsetAnnotPartial < 0) {
