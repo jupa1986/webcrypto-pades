@@ -319,8 +319,8 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
         var offsetForm = find(array, '<<', startRoot) + 2;
         array = insertIntoArray(array, offsetForm, appendAcroForm);
     } else {
+        var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
         if (acroForm.get("Fields").length > 0 && pdf.acroForm.get('SigFlags') === 3) {
-            var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
             var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot); // TODO: fixme
             var endOffsetAcroForm = find(array, ']', offsetAcroForm);
             array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
@@ -333,7 +333,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
                 var xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
                 // TODO: fixme
-                var array = copyToEnd(pdf.stream.bytes, xrefEntry.offset - 1, xrefEntrySuccessor.offset);
+                var array = copyToEnd(array, xrefEntry.offset - 1, xrefEntrySuccessor.offset);
                 var offsetFields = find(array, '/Fields', startRoot);
                 var endOffsetFields = find(array, ']', offsetFields);
                 var offsetSigFlags = find(array, 'SigFlags', offsetFields);
@@ -341,8 +341,9 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
                     array = insertIntoArray(array, endOffsetFields + 1, '/SigFlags 3');
                 }
                 array = insertIntoArray(array, endOffsetFields, appendAnnot);
-            } else
-                throw new Error("PDF no soportado!");
+            }
+            // TODO: fixme
+            throw new Error("PDF no soportado!");
         }
     }
 
@@ -365,6 +366,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
 
     var startContent = array.length;
     let offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccessor.offset);
+    let subAnnots = false;
     if (offsetAnnot > 0) {
         offsetAnnot +=7;
         let offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccessor.offset);
@@ -380,7 +382,8 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
             var xrefOffset = parseInt(prevStr.match(/\d+/)[0]);
             xrefEntry = pdf.xref.getEntry(xrefOffset);
             xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
-            // FIXME
+            // TODO: fixme
+            subAnnots = true;
             throw new Error("PDF no soportado!");
         }
     }
@@ -388,11 +391,14 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     // Find /Annots
     offsetAnnot = find(array, '/Annots', startContent);
 
-    if (offsetAnnot < 0) {
+    if (offsetAnnot < 0 && !subAnnots) {
         offsetAnnot = find(array, '<<', startContent) + 2;
         appendAnnot = '/Annots['+appendAnnot+']\n ';
     } else {
-        offsetAnnot = find(array, ']', offsetAnnot); // TODO
+        if (subAnnots)
+            offsetAnnot = find(array, ']', startContent); // TODO
+        else
+            offsetAnnot = find(array, ']', offsetAnnot); // TODO
     }
 
     array = insertIntoArray(array, offsetAnnot, appendAnnot);
