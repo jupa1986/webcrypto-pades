@@ -300,38 +300,51 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     //copy root and the entry with contents to the end
     var startRoot = pdf.stream.bytes.length + 1;
 
+    var annotEntry = findFreeXrefNr(pdf.xref.entries);
+    var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
+    var appendAnnot = ' ' + annotEntry + ' 0 R';
+
     var limit;
     if (root.offset == rootSuccessor.offset)
         limit = find(pdf.stream.bytes, 'endobj', root.offset) + 7;
     else
         limit = rootSuccessor.offset;
 
-    var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
+    const acroForm = pdf.xref.root.get("AcroForm");
+    if(typeof acroForm === "undefined") { // New sign
+        var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
 
-    //since we signed the first one, we know how the pdf has to look like:
-    var offsetForm = find(array, '<<', startRoot) +2;
-
-    var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot);
-    if (offsetAcroForm < 0) {
-        offsetAcroForm = find(array, '/AcroForm', startRoot);
-        // TODO: fixme
-        if (offsetAcroForm > 0)
-            throw new Error("PDF no soportado!");
-    }
-
-    var annotEntry = findFreeXrefNr(pdf.xref.entries);
-    var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
-
-    var appendAnnot = ' ' + annotEntry + ' 0 R';
-
-    if (offsetAcroForm < 0) {
-        var appendAcroForm = '/AcroForm<</Fields['+annotEntry+' 0 R] /SigFlags 3>>';
+        var appendAcroForm = '/AcroForm<</Fields['+appendAnnot+'] /SigFlags 3>>';
+        //since we signed the first one, we know how the pdf has to look like:
+        var offsetForm = find(array, '<<', startRoot) + 2;
         array = insertIntoArray(array, offsetForm, appendAcroForm);
     } else {
-        var endOffsetAcroForm = find(array, ']', offsetAcroForm);
-        array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
-    }
+        if (acroForm.get("Fields").length > 0 && pdf.acroForm.get('SigFlags') === 3) {
+            var array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
+            var offsetAcroForm = find(array, '/AcroForm<</Fields', startRoot); // TODO: fixme
+            var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+            array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
+        } else {
+            if (acroForm.objId != null){
+                let objId = acroForm.objId.substring(0, acroForm.objId.length - 1);
+                let xrefEntry = pdf.xref.getEntry(objId);
+                if (typeof xrefEntry.uncompressed == 'undefined')
+                    throw new Error("PDF no soportado!");
 
+                var xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+                // TODO: fixme
+                var array = copyToEnd(pdf.stream.bytes, xrefEntry.offset - 1, xrefEntrySuccessor.offset);
+                var offsetFields = find(array, '/Fields', startRoot);
+                var endOffsetFields = find(array, ']', offsetFields);
+                var offsetSigFlags = find(array, 'SigFlags', offsetFields);
+                if (offsetSigFlags < 0) {
+                    array = insertIntoArray(array, endOffsetFields + 1, '/SigFlags 3');
+                }
+                array = insertIntoArray(array, endOffsetFields, appendAnnot);
+            } else
+                throw new Error("PDF no soportado!");
+        }
+    }
 
     //we need to add Annots [x y R] to the /Type /Page section. We can do that by searching /Annots
     var pages = pdf.catalog.catDict.get('Pages');
@@ -347,19 +360,31 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var xrefEntry = pdf.xref.getEntry(contentRef.num);
     if (typeof xrefEntry.uncompressed == 'undefined')
         throw new Error("PDF no soportado!");
-    var xrefEntrySuccosser = findSuccessorEntry(pdf.xref.entries, xrefEntry);
-    // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccosser.offset;
+    var xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+    // var offsetAnnotRelative = endOffsetAnnot - xrefEntrySuccessor.offset;
 
     var startContent = array.length;
-    let offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccosser.offset);
+    let offsetAnnot = find(array, '/Annots', xrefEntry.offset, xrefEntrySuccessor.offset);
     if (offsetAnnot > 0) {
         offsetAnnot +=7;
-        let offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccosser.offset);
+        let offsetAnnotEnd = find(array, '/', offsetAnnot, xrefEntrySuccessor.offset);
         let offsetAnnotPartial = find(array, ']', offsetAnnot, offsetAnnotEnd);
-        if (offsetAnnotPartial < 0)
+
+        if (offsetAnnotPartial < 0) {
+            let buffer = new ArrayBuffer(offsetAnnotEnd - offsetAnnot);
+            let ubuffer = new Uint8Array(buffer);
+            let j = 0;
+            for(let i = offsetAnnot; i < offsetAnnotEnd; i++)
+                ubuffer[j++] = array[i]
+            let prevStr = String.fromCharCode.apply(null, ubuffer);
+            var xrefOffset = parseInt(prevStr.match(/\d+/)[0]);
+            xrefEntry = pdf.xref.getEntry(xrefOffset);
+            xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+            // FIXME
             throw new Error("PDF no soportado!");
+        }
     }
-    array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccosser.offset);
+    array = copyToEnd(array, xrefEntry.offset, xrefEntrySuccessor.offset);
     // Find /Annots
     offsetAnnot = find(array, '/Annots', startContent);
 
