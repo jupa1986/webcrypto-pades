@@ -6,11 +6,185 @@ Object.defineProperty(exports, "__esModule", {
 
 var newSig = function () {
     var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(webcrypto, pdf, root, rootSuccessor, date, password) {
-        var startRoot, annotEntry, sigEntry, appendAnnot, limit, acroForm, array, appendAcroForm, offsetForm, offsetAcroForm, offsetSigFlags, endOffsetAcroForm, objId, _xrefEntry, xrefEntrySuccessor, offsetFields, endOffsetFields, pages, contentRef, xref, xrefEntry, startContent, offsetAnnot, subAnnots, offsetAnnotEnd, offsetAnnotPartial, _buffer, _ubuffer, _j, i, _prevStr, xrefOffset, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, sha256Buffer, sha256Hex, prev, eof, buffer, ubuffer, j, _i, prevStr, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
-
+        var array, annotEntry, sigEntry, appendAnnot, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, startRoot, limit, acroForm, appendAcroForm, offsetForm, offsetAcroForm, offsetSigFlags, endOffsetAcroForm, pages, contentRef, xref, startContent, xrefEntry, xrefEntrySuccessor, offsetAnnot, sha256Buffer, sha256Hex, prev, eof, buffer, ubuffer, j, i, prevStr, offsetXref, old, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
         return regeneratorRuntime.wrap(function _callee$(_context) {
             while (1) {
                 switch (_context.prev = _context.next) {
+                    case 0:
+                        array = insertIntoArray(new Uint8Array(0), 0, '\n');
+                        annotEntry = findFreeXrefNr(pdf.xref.entries);
+                        sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
+                        appendAnnot = ' ' + annotEntry + ' 0 R';
+                        startAnnot = array.length;
+                        append = annotEntry + ' 0 obj\n<</F 132/Type/Annot/Subtype/Widget/Rect[0 0 0 0]/FT/Sig/DR<<>>/T(signature' + annotEntry + ')/V ' + sigEntry + ' 0 R>>\nendobj\n\n';
+
+                        array = insertIntoArray(array, startAnnot, append);
+
+                        startSig = array.length;
+                        start = sigEntry + ' 0 obj\n<</Contents <';
+                        //TODO: Adobe thinks its important to have the right size, no idea why this is the case
+
+                        crypto = new Array(round256(1024 * 6)).join('0');
+                        middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:' + now(date) + '\')\n/ByteRange ';
+                        byteRange = '[0000000000 0000000000 0000000000 0000000000]';
+                        end = '/Filter/Adobe.PPKLite/Reason()/ContactInfo()>>\nendobj\n\n';
+                        //all together
+
+                        append2 = start + crypto + middle + byteRange + end;
+
+                        array = insertIntoArray(array, startSig, append2);
+
+                        startRoot = array.length;
+                        limit = root.offset == rootSuccessor.offset ? find(pdf.stream.bytes, 'endobj', root.offset) + 7 : rootSuccessor.offset;
+                        array = copyTo(array, pdf.stream.bytes, root.offset, limit);
+                        array = insertIntoArray(array, array.length, '\n');
+                        acroForm = pdf.xref.root.get("AcroForm");
+
+                        if (!(typeof acroForm === "undefined")) {
+                            _context.next = 26;
+                            break;
+                        }
+
+                        // New sign
+                        appendAcroForm = '/AcroForm<</Fields[' + appendAnnot + '] /SigFlags 3>>';
+                        offsetForm = find(array, '<<', startRoot) + 2;
+
+                        array = insertIntoArray(array, offsetForm, appendAcroForm);
+                        _context.next = 37;
+                        break;
+
+                    case 26:
+                        if (!(acroForm.objId == null)) {
+                            _context.next = 36;
+                            break;
+                        }
+
+                        offsetAcroForm = find(array, '/AcroForm', startRoot); // TODO: fixme
+
+                        offsetAcroForm = find(array, '/Fields', offsetAcroForm); // TODO: fixme
+                        offsetSigFlags = find(array, 'SigFlags', offsetAcroForm);
+                        endOffsetAcroForm = find(array, ']', offsetAcroForm);
+
+                        if (!(offsetSigFlags < 0)) {
+                            _context.next = 33;
+                            break;
+                        }
+
+                        throw new Error("PDF no soportado!");
+
+                    case 33:
+                        array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
+                        _context.next = 37;
+                        break;
+
+                    case 36:
+                        throw new Error("PDF no soportado!");
+
+                    case 37:
+
+                        //we need to add Annots [x y R] to the /Type /Page section. We can do that by searching /Annots
+                        pages = pdf.catalog.catDict.get('Pages');
+                        //get first page, we have hidden sig, so don't bother
+
+                        contentRef = pages.get('Kids')[0]; // pages.get('Kids').length - 1
+
+                        xref = pdf.xref.fetch(contentRef);
+
+                        if (xref.get('Kids') != undefined) {
+                            contentRef = xref.get('Kids')[0];
+                        }
+
+                        startContent = array.length;
+                        xrefEntry = pdf.xref.getEntry(contentRef.num);
+                        xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+
+                        limit = xrefEntry.offset === xrefEntrySuccessor.offset ? find(pdf.stream.bytes, 'endobj', xrefEntry.offset) + 7 : xrefEntrySuccessor.offset;
+
+                        array = copyTo(array, pdf.stream.bytes, xrefEntry.offset, limit);
+                        offsetAnnot = find(array, '/Annots', startContent);
+
+                        if (offsetAnnot < 0) {
+                            offsetAnnot = find(array, '<<', startContent) + 2;
+                            appendAnnot = '/Annots[' + appendAnnot + ']\n';
+                        } else {
+                            offsetAnnot = find(array, ']', offsetAnnot);
+                        }
+
+                        array = insertIntoArray(array, offsetAnnot, appendAnnot);
+
+                        _context.next = 51;
+                        return webcrypto.subtle.digest('SHA-256', array);
+
+                    case 51:
+                        sha256Buffer = _context.sent;
+                        sha256Hex = (0, _pvutils.bufferToHexCodes)(sha256Buffer);
+                        prev = findBackwards(pdf.stream.bytes, 'startxref', pdf.stream.bytes.length - 1);
+                        eof = find(pdf.stream.bytes, '%%EOF', prev);
+                        buffer = new ArrayBuffer(eof - prev);
+                        ubuffer = new Uint8Array(buffer);
+                        j = 0;
+
+                        for (i = prev; i < eof; i++) {
+                            ubuffer[j++] = pdf.stream.bytes[i];
+                        }prevStr = String.fromCharCode.apply(null, ubuffer);
+                        offsetXref = parseInt(prevStr.match(/\d+/)[0]);
+
+                        if (!(find(pdf.stream.bytes, 'xref', offsetXref, offsetXref + 7) < 0)) {
+                            _context.next = 63;
+                            break;
+                        }
+
+                        throw new Error("PDF no soportado!");
+
+                    case 63:
+
+                        prev = offsetXref;
+
+                        array = insertIntoArray(pdf.stream.bytes, pdf.stream.bytes.length, array);
+                        old = pdf.stream.bytes.length;
+                        startxref = array.length;
+                        xrefEntries = [];
+
+                        xrefEntries[0] = { offset: 0, gen: 65535, free: true };
+                        xrefEntries[pdf.xref.topDict.getRaw('Root').num] = { offset: startRoot + old, gen: 0, free: false };
+                        xrefEntries[contentRef.num] = { offset: startContent + old, gen: 0, free: false };
+                        xrefEntries[annotEntry] = { offset: startAnnot + old, gen: 0, free: false };
+                        xrefEntries[sigEntry] = { offset: startSig + old, gen: 0, free: false };
+                        xrefTable = createXrefTableAppend(xrefEntries);
+
+                        xrefTable += createTrailer(pdf.xref.topDict, startxref, sha256Hex, xrefEntries.length, prev);
+                        array = insertIntoArray(array, array.length, xrefTable);
+
+                        from1 = 0;
+                        to1 = startSig + start.length + old;
+                        from2 = to1 + crypto.length;
+                        to2 = array.length - from2 - 1;
+                        byteRange = '[' + pad10(from1) + ' ' + pad10(to1 - 1) + ' ' + pad10(from2 + 1) + ' ' + pad10(to2) + ']';
+
+                        array = updateArray(array, from2 + middle.length, byteRange);
+
+                        return _context.abrupt('return', [array, [from1, to1 - 1, from2 + 1, to2]]);
+
+                    case 83:
+                    case 'end':
+                        return _context.stop();
+                }
+            }
+        }, _callee, this);
+    }));
+
+    return function newSig(_x, _x2, _x3, _x4, _x5, _x6) {
+        return _ref.apply(this, arguments);
+    };
+}();
+
+var newSig2 = function () {
+    var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2(webcrypto, pdf, root, rootSuccessor, date, password) {
+        var startRoot, annotEntry, sigEntry, appendAnnot, limit, acroForm, array, appendAcroForm, offsetForm, offsetAcroForm, offsetSigFlags, endOffsetAcroForm, objId, _xrefEntry, xrefEntrySuccessor, offsetFields, endOffsetFields, pages, contentRef, xref, xrefEntry, startContent, offsetAnnot, subAnnots, offsetAnnotEnd, offsetAnnotPartial, _buffer, _ubuffer, _j, i, _prevStr, xrefOffset, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, sha256Buffer, sha256Hex, prev, eof, buffer, ubuffer, j, _i, prevStr, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
+
+        return regeneratorRuntime.wrap(function _callee2$(_context2) {
+            while (1) {
+                switch (_context2.prev = _context2.next) {
                     case 0:
                         //copy root and the entry with contents to the end
                         startRoot = pdf.stream.bytes.length + 1;
@@ -23,7 +197,7 @@ var newSig = function () {
                         acroForm = pdf.xref.root.get("AcroForm");
 
                         if (!(typeof acroForm === "undefined")) {
-                            _context.next = 13;
+                            _context2.next = 13;
                             break;
                         }
 
@@ -35,14 +209,14 @@ var newSig = function () {
                         offsetForm = find(array, '<<', startRoot) + 2;
 
                         array = insertIntoArray(array, offsetForm, appendAcroForm);
-                        _context.next = 36;
+                        _context2.next = 36;
                         break;
 
                     case 13:
                         array = copyToEnd(pdf.stream.bytes, root.offset - 1, limit);
 
                         if (!(acroForm.objId == null)) {
-                            _context.next = 23;
+                            _context2.next = 23;
                             break;
                         }
 
@@ -57,12 +231,12 @@ var newSig = function () {
                         }
 
                         array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
-                        _context.next = 36;
+                        _context2.next = 36;
                         break;
 
                     case 23:
                         if (!(acroForm.objId != null)) {
-                            _context.next = 35;
+                            _context2.next = 35;
                             break;
                         }
 
@@ -70,7 +244,7 @@ var newSig = function () {
                         _xrefEntry = pdf.xref.getEntry(objId);
 
                         if (!(typeof _xrefEntry.uncompressed == 'undefined')) {
-                            _context.next = 28;
+                            _context2.next = 28;
                             break;
                         }
 
@@ -112,7 +286,7 @@ var newSig = function () {
                         xrefEntry = pdf.xref.getEntry(contentRef.num);
 
                         if (!(typeof xrefEntry.uncompressed == 'undefined')) {
-                            _context.next = 43;
+                            _context2.next = 43;
                             break;
                         }
 
@@ -127,7 +301,7 @@ var newSig = function () {
                         subAnnots = false;
 
                         if (!(offsetAnnot > 0)) {
-                            _context.next = 63;
+                            _context2.next = 63;
                             break;
                         }
 
@@ -138,7 +312,7 @@ var newSig = function () {
                         offsetAnnotPartial = find(array, ']', offsetAnnot, offsetAnnotEnd);
 
                         if (!(offsetAnnotPartial < 0)) {
-                            _context.next = 63;
+                            _context2.next = 63;
                             break;
                         }
 
@@ -191,11 +365,11 @@ var newSig = function () {
 
                         array = insertIntoArray(array, startSig, append2);
 
-                        _context.next = 80;
+                        _context2.next = 80;
                         return webcrypto.subtle.digest('SHA-256', array);
 
                     case 80:
-                        sha256Buffer = _context.sent;
+                        sha256Buffer = _context2.sent;
                         sha256Hex = (0, _pvutils.bufferToHexCodes)(sha256Buffer);
                         prev = findBackwards(array, 'startxref', array.length - 1);
                         // prev = findBackwards(array, 'xref', prev);
@@ -212,7 +386,7 @@ var newSig = function () {
                         xrefOffset = parseInt(prevStr.match(/\d+/)[0]);
 
                         if (!(find(array, 'xref', xrefOffset, xrefOffset + 7) < 0)) {
-                            _context.next = 92;
+                            _context2.next = 92;
                             break;
                         }
 
@@ -244,18 +418,18 @@ var newSig = function () {
 
                         array = updateArray(array, from2 + middle.length, byteRange);
 
-                        return _context.abrupt('return', [array, [from1, to1 - 1, from2 + 1, to2]]);
+                        return _context2.abrupt('return', [array, [from1, to1 - 1, from2 + 1, to2]]);
 
                     case 110:
                     case 'end':
-                        return _context.stop();
+                        return _context2.stop();
                 }
             }
-        }, _callee, this);
+        }, _callee2, this);
     }));
 
-    return function newSig(_x, _x2, _x3, _x4, _x5, _x6) {
-        return _ref.apply(this, arguments);
+    return function newSig2(_x7, _x8, _x9, _x10, _x11, _x12) {
+        return _ref2.apply(this, arguments);
     };
 }();
 
@@ -437,8 +611,18 @@ function copyToEnd(array, from, to) {
     return buf;
 }
 
+function copyTo(array0, array, from, to) {
+    var buf = new Uint8Array(array0.length + (to - from));
+    for (var i = 0, len = array0.length; i < len; i++) {
+        buf[i] = array0[i];
+    }for (var i = 0, len = to - from; i < len; i++) {
+        buf[array0.length + i] = array[from + i];
+    }return buf;
+}
+
 function insertIntoArray(array, pos, str) {
-    var ins = stringToUint8Array(str);
+    var ins = str instanceof Uint8Array ? str : stringToUint8Array(str);
+
     var buf = new Uint8Array(array.length + ins.length);
     for (var i = 0; i < pos; i++) {
         buf[i] = array[i];
