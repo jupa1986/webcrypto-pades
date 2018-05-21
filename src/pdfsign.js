@@ -164,8 +164,19 @@ function copyToEnd(array, from, to) {
     return buf;
 }
 
+function copyTo(array0, array, from, to) {
+    var buf = new Uint8Array(array0.length + (to - from));
+    for (var i = 0, len=array0.length; i < len; i++)
+        buf[i] = array0[i];
+
+    for (var i = 0, len=(to - from); i < len; i++)
+        buf[array0.length + i] = array[from + i];
+    return buf;
+}
+
 function insertIntoArray(array, pos, str) {
-    var ins = stringToUint8Array(str);
+    var ins = str instanceof Uint8Array? str: stringToUint8Array(str);
+
     var buf = new Uint8Array(array.length + ins.length);
     for (var i = 0; i < pos; i++) {
         buf[i] = array[i];
@@ -297,6 +308,119 @@ function createOffset(date) {
 }
 
 async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
+    var array = insertIntoArray(new Uint8Array(0), 0, '\n');
+
+    var annotEntry = findFreeXrefNr(pdf.xref.entries);
+    var sigEntry = findFreeXrefNr(pdf.xref.entries, [annotEntry]);
+    var appendAnnot = ' ' + annotEntry + ' 0 R';
+
+    var startAnnot = array.length;
+    var append = annotEntry + ' 0 obj\n<</F 132/Type/Annot/Subtype/Widget/Rect[0 0 0 0]/FT/Sig/DR<<>>/T(signature'+annotEntry+')/V '+sigEntry+' 0 R>>\nendobj\n\n';
+    array = insertIntoArray(array, startAnnot, append);
+
+    var startSig = array.length;
+    var start = sigEntry+ ' 0 obj\n<</Contents <';
+    //TODO: Adobe thinks its important to have the right size, no idea why this is the case
+    var crypto = new Array(round256(1024 * 6)).join( '0' );
+    var middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:'+now(date)+'\')\n/ByteRange ';
+    var byteRange = '[0000000000 0000000000 0000000000 0000000000]';
+    var end = '/Filter/Adobe.PPKLite/Reason()/ContactInfo()>>\nendobj\n\n';
+    //all together
+    var append2 = start+crypto+middle+byteRange+end;
+    array = insertIntoArray(array, startSig, append2);
+
+    var startRoot = array.length;
+    var limit = root.offset == rootSuccessor.offset?find(pdf.stream.bytes, 'endobj', root.offset) + 7: rootSuccessor.offset;
+
+    var array = copyTo(array, pdf.stream.bytes, root.offset, limit);
+    var array = insertIntoArray(array, array.length, '\n');
+
+    const acroForm = pdf.xref.root.get("AcroForm");
+    if(typeof acroForm === "undefined") { // New sign
+        var appendAcroForm = '/AcroForm<</Fields['+appendAnnot+'] /SigFlags 3>>';
+        var offsetForm = find(array, '<<', startRoot) + 2;
+        array = insertIntoArray(array, offsetForm, appendAcroForm);
+    } else { //Append Sign
+        if (acroForm.objId == null) {
+            var offsetAcroForm = find(array, '/AcroForm', startRoot); // TODO: fixme
+            offsetAcroForm = find(array, '/Fields', offsetAcroForm); // TODO: fixme
+            var offsetSigFlags = find(array, 'SigFlags', offsetAcroForm);
+            var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+            if (offsetSigFlags < 0)
+                throw new Error("PDF no soportado!");
+            array = insertIntoArray(array, endOffsetAcroForm, appendAnnot);
+        } else
+            throw new Error("PDF no soportado!");
+    }
+
+    //we need to add Annots [x y R] to the /Type /Page section. We can do that by searching /Annots
+    var pages = pdf.catalog.catDict.get('Pages');
+    //get first page, we have hidden sig, so don't bother
+    var contentRef = pages.get('Kids')[0]; // pages.get('Kids').length - 1
+    var xref = pdf.xref.fetch(contentRef);
+    if (xref.get('Kids') != undefined) {
+        contentRef = xref.get('Kids')[0];
+    }
+
+    var startContent = array.length;
+    var xrefEntry = pdf.xref.getEntry(contentRef.num);
+    var xrefEntrySuccessor = findSuccessorEntry(pdf.xref.entries, xrefEntry);
+    limit = xrefEntry.offset === xrefEntrySuccessor.offset?find(pdf.stream.bytes, 'endobj', xrefEntry.offset) + 7: xrefEntrySuccessor.offset;
+
+    array = copyTo(array, pdf.stream.bytes, xrefEntry.offset, limit);
+    var offsetAnnot = find(array, '/Annots', startContent);
+    if (offsetAnnot < 0) {
+        offsetAnnot = find(array, '<<', startContent) + 2;
+        appendAnnot = '/Annots['+appendAnnot+']\n';
+    } else {
+         offsetAnnot = find(array, ']', offsetAnnot);
+    }
+
+    array = insertIntoArray(array, offsetAnnot, appendAnnot);
+
+    let sha256Buffer = await webcrypto.subtle.digest('SHA-256', array);
+    let sha256Hex = bufferToHexCodes(sha256Buffer);
+
+    var prev = findBackwards(pdf.stream.bytes, 'startxref', pdf.stream.bytes.length-1);
+
+    var eof = find(pdf.stream.bytes, '%%EOF', prev);
+    var buffer = new ArrayBuffer(eof - prev);
+    var ubuffer = new Uint8Array(buffer);
+    let j = 0;
+    for(let i = prev; i < eof; i++)
+        ubuffer[j++] = pdf.stream.bytes[i]
+    let prevStr = String.fromCharCode.apply(null, ubuffer);
+    var offsetXref = parseInt(prevStr.match(/\d+/)[0]);
+    if (find(pdf.stream.bytes, 'xref', offsetXref, offsetXref + 7) < 0)
+        throw new Error("PDF no soportado!");
+
+    prev = offsetXref;
+
+    array = insertIntoArray(pdf.stream.bytes, pdf.stream.bytes.length, array);
+    let old = pdf.stream.bytes.length;
+
+    var startxref = array.length;
+    var xrefEntries = [];
+    xrefEntries[0] = {offset:0, gen:65535, free:true};
+    xrefEntries[pdf.xref.topDict.getRaw('Root').num] = {offset:startRoot+old, gen:0, free:false};
+    xrefEntries[contentRef.num] = {offset:startContent+old, gen:0, free:false};
+    xrefEntries[annotEntry] = {offset:startAnnot+old, gen:0, free:false};
+    xrefEntries[sigEntry] = {offset:startSig+old, gen:0, free:false};
+    var xrefTable = createXrefTableAppend(xrefEntries);
+    xrefTable += createTrailer(pdf.xref.topDict, startxref, sha256Hex, xrefEntries.length, prev);
+    array = insertIntoArray(array, array.length, xrefTable);
+
+    var from1 = 0;
+    var to1 = startSig + start.length + old;
+    var from2 = to1 + crypto.length;
+    var to2 = (array.length - from2) - 1;
+    var byteRange = '['+pad10(from1)+' '+pad10(to1 - 1) + ' ' +pad10(from2 + 1)+ ' ' + pad10(to2) + ']';
+    array = updateArray(array, from2 + middle.length, byteRange);
+
+    return [array, [from1, to1 - 1, from2 +1, to2]];
+}
+
+async function newSig2(webcrypto, pdf, root, rootSuccessor, date, password) {
     //copy root and the entry with contents to the end
     var startRoot = pdf.stream.bytes.length + 1;
 
@@ -324,7 +448,7 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
             var offsetAcroForm = find(array, '/AcroForm', startRoot); // TODO: fixme
             offsetAcroForm = find(array, '/Fields', offsetAcroForm); // TODO: fixme
             var offsetSigFlags = find(array, 'SigFlags', offsetFields);
-             var endOffsetAcroForm = find(array, ']', offsetAcroForm);
+            var endOffsetAcroForm = find(array, ']', offsetAcroForm);
             if (offsetSigFlags < 0) {
                 array = insertIntoArray(array, endOffsetAcroForm + 1, '/SigFlags 3');
             }
