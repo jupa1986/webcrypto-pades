@@ -6,7 +6,8 @@
   "module": "./src/index.js",
   "scripts": {
     "build": "babel src --compact=false --out-dir build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [],
   "author": "Carlos Canaza <jccarlos.a@gmail.com>",
