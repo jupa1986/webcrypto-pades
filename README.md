@@ -3,11 +3,11 @@
 Es una biblioteca que firma y lista firmas de PDF en el navegador y en nodejs.
 
 ```javascript
-let pdf = await pdfsign.firmarPDF(pdfBuffer, key, certificate);
+let pdf = await pdfsign.signpdf(pdfBuffer, key, certificate);
 ```
 
 ```javascript
-let firmas = await pdfsign.listarFirmas(pdfBuffer, HTTPOCSPRequest);
+let firmas = await pdfsign.listSignatures(pdfBuffer, HTTPOCSPRequest);
 ```
 
 Los ejemplos de firma con nodejs en `ejemplos/` y los ejemplos de firma en el navegador `ejemplos/simple`.
