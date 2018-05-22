@@ -57,14 +57,14 @@ $("firmar").onclick = (ev) => {
     }
 
     // Codigo para firmar digital de un documento PDF.
-    let sequence = pdffirma.primerProveedor(ws).then((provider) => {
+    let sequence = pdfsign.firstProvider(ws).then((provider) => {
 
         // Configuracion
-        pdffirma.setPDFDocument(pdfjsWorker.PDFDocument);
-        pdffirma.setEngine('local', provider);
+        pdfsign.setPDFDocument(pdfjsWorker.PDFDocument);
+        pdfsign.setEngine('local', provider);
 
         // Buscar token, leer par de claves y firmar el documento PDF
-        return pdffirma.primerCertificado(provider).then(async ([key, certificate]) => {
+        return pdfsign.firstCertificate(provider).then(async ([key, certificate]) => {
             // Firmar uno o varios PDFs
             var table = $("documentos");
             for (let i = 1; i < table.rows.length; i++) {
@@ -73,7 +73,7 @@ $("firmar").onclick = (ev) => {
                     console.log(id);
                     let pdfRaw = (await leerPDF(id)).target.response;
                     console.log(pdfRaw);
-                    let dataSigned = await pdffirma.firmarPDF(pdfRaw, key, certificate);
+                    let dataSigned = await pdfsign.signpdf(pdfRaw, key, certificate);
                     await guardarPDF(dataSigned);
                     //Actualizar estado
                     table.rows[i].cells[2].innerHTML = "firmado";

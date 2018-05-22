@@ -29,29 +29,29 @@ $file.onchange = function (ev) {
     var file = ev.currentTarget.files[0];
     var reader = new FileReader();
 
-    pdffirma.setPDFDocument(pdfjsWorker.PDFDocument);
+    pdfsign.setPDFDocument(pdfjsWorker.PDFDocument);
     $("resultado").innerHTML = "";
     reader.onload = (data) => {
         let pdfBuffer = data.target.result;
-        let sequence = pdffirma.listarFirmas(pdfBuffer).then((firmas) => {
+        let sequence = pdfsign.listSignatures(pdfBuffer).then((signatures) => {
             // listar todas las firmas
-            for (let i in firmas.data) {
-                let data = firmas.data[i];
+            for (let i in signatures.data) {
+                let data = signatures.data[i];
 
                 // Issuer
-                for ( let i in data.certificado.issuer.typesAndValues) {
-                    var tav = data.certificado.issuer.typesAndValues[i];
+                for ( let i in data.certificate.issuer.typesAndValues) {
+                    var tav = data.certificate.issuer.typesAndValues[i];
                     $("resultado").innerHTML += "<p> <b> "+ tav.type +" </b>" +
                         tav.value.valueBlock.value + "</p>";
                 }
                 // Subject
-                for ( let i in data.certificado.subject.typesAndValues) {
-                    var tav = data.certificado.subject.typesAndValues[i];
+                for ( let i in data.certificate.subject.typesAndValues) {
+                    var tav = data.certificate.subject.typesAndValues[i];
 
                     $("resultado").innerHTML += "<p> <b> "+ tav.type +" </b>" +
                         tav.value.valueBlock.value + "</p>";
                 }
-                delete data.certificado;
+                delete data.certificate;
                 for (let i in data) {
                     $("resultado").innerHTML += "<p> <b> "+ i +" </b>" +
                         data[i] + "</p>";
