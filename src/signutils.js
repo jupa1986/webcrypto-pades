@@ -122,7 +122,22 @@ export function listCertificates(provider) {
         });
 }
 
-export function createCMSSigned(data, certSimpl, key) {
+export function createCMSSigned(digest, certSimpl, key) {
+    const signedAttr = [];
+
+	signedAttr.push(new pkijs.Attribute({
+		type: "1.2.840.113549.1.9.3",
+		values: [
+			new asn1js.ObjectIdentifier({ value: "1.2.840.113549.1.7.1" })
+		]
+	})); // contentType
+
+	signedAttr.push(new pkijs.Attribute({
+		type: "1.2.840.113549.1.9.4",
+		values: [
+			new asn1js.OctetString({ valueHex: digest })
+		]
+	})); // messageDigest
 
     let cmsSignedSimpl = new pkijs.SignedData({
         version: 1,
@@ -141,9 +156,13 @@ export function createCMSSigned(data, certSimpl, key) {
         ],
         certificates: [certSimpl]
     });
+    cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
+		type: 0,
+		attributes: signedAttr
+	});
 
     //TODO: añadir extensiones
-    return cmsSignedSimpl.sign(key, 0, "sha-256", data).then(() => { // SHA-256 por defecto
+    return cmsSignedSimpl.sign(key, 0, "sha-256").then(() => { // SHA-256 por defecto
         var cmsSignedSchema = cmsSignedSimpl.toSchema(true);
         var cmsContentSimp = new pkijs.ContentInfo({
             contentType: '1.2.840.113549.1.7.2',
@@ -164,14 +183,20 @@ export function createCMSSigned(data, certSimpl, key) {
     });
 }
 
+export function messageDigest(pdfRaw, byteRange) {
+    // TODO: fixme alg by default SHA-256 and digest
+    var data = pdfsign.removeFromArray(pdfRaw, byteRange[1], byteRange[2]);
+    return pkijs.getEngine().subtle.digest('SHA-256', data);
+}
+
 export function issuerCertificate() {
     return CA;
 }
 
 export function signpdf(pdfRaw, key, certificate) {
-    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(([pdf, byteRange]) => {
-        let data = pdfsign.removeFromArray(pdf, byteRange[1], byteRange[2]);
-        return createCMSSigned(data, certificate, key).then((signature) => { // hex
+    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(async ([pdf, byteRange]) => {
+        let digest = await messageDigest(pdf, byteRange);
+        return createCMSSigned(digest, certificate, key).then((signature) => { // hex
             return pdfsign.updateArray(pdf, byteRange[1] + 1, signature);
         });
     });

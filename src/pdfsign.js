@@ -174,7 +174,7 @@ function copyTo(array0, array, from, to) {
     return buf;
 }
 
-function insertIntoArray(array, pos, str) {
+export function insertIntoArray(array, pos, str) {
     var ins = str instanceof Uint8Array? str: stringToUint8Array(str);
 
     var buf = new Uint8Array(array.length + ins.length);
