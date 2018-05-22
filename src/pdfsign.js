@@ -307,6 +307,7 @@ function createOffset(date) {
     return sign + hours + "'" + minutes;
 }
 
+// https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdfs/PDF32000_2008.pdf
 async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var array = insertIntoArray(new Uint8Array(0), 0, '\n');
 

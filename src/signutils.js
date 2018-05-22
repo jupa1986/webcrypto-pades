@@ -10,14 +10,15 @@ const CA64 = "MIIGlzCCBH+gAwIBAgIIDVNUG1JQENowDQYJKoZIhvcNAQELBQAwSzEuMCwGA1UEAw
 let asn2 = asn1js.fromBER(pvutils.stringToArrayBuffer(pvutils.fromBase64(CA64)));
 let CA = new pkijs.Certificate({ schema: asn2.result });
 trustedCertificates.push(CA);
+let hashAlg = "SHA-256";
 
 export function certificateRaw(provider, certID) {
     return Promise.resolve()
-        .then(function () {
+        .then(() => {
             return provider.certStorage.getItem(certID)
-                .then(function (cert) {
+                .then((cert) => {
                     return provider.certStorage.exportCert('raw', cert)
-                        .then(function (raw) {
+                        .then((raw) => {
                             return raw;
                         });
                 });
@@ -26,10 +27,10 @@ export function certificateRaw(provider, certID) {
 
 export function keyFromCertificateId(type, provider, certID) {
     return Promise.resolve()
-        .then(function () {
+        .then(() => {
             return provider.keyStorage.keys()
         })
-        .then(function (keyIDs) {
+        .then((keyIDs) => {
             for (var i = 0; i < keyIDs.length; i++) {
                 var keyID = keyIDs[i];
                 var parts = keyID.split("-");
@@ -40,13 +41,13 @@ export function keyFromCertificateId(type, provider, certID) {
             }
             return null;
         })
-        .then(function (key) {
+        .then((key) => {
             if (key || type !== "public") {
                 return key;
             }
 
             return provider.certStorage.getItem(certID)
-                .then(function (cert) {
+                .then((cert) => {
                     return cert.publicKey;
                 });
         });
@@ -62,67 +63,60 @@ export function firstProvider(ws) {
 }
 
 export function listProviders(ws) {
-    return ws.info()
-        .then(function (info) {
-            let providers = [];
-            for (let i = 0; i < info.providers.length; i++) {
-                const provider = info.providers[i];
-                if (provider.isHardware)
-                    providers.push(provider.id);
-            }
-            return providers;
-        });
+    return ws.info().then((info) => {
+        let providers = [];
+        for (let i = 0; i < info.providers.length; i++) {
+            const provider = info.providers[i];
+            if (provider.isHardware)
+                providers.push(provider.id);
+        }
+        return providers;
+    });
 }
 
 export function listCertificates(provider) {
     let certIDs, keyIDs;
-    return Promise.resolve()    // Habilitar en el navegador
-        .then(function () {
-            if (typeof provider.isLoggedIn == "function") {
-                return provider.isLoggedIn()
-                    .then(function (ok) {
-                        if (ok)
-                            return provider.logout();
-                    }).then(() => {
-                        return provider.login();
-                    });
-            }
-        })
-        .then(function () {
-            return provider.certStorage.keys()
-        })
-        .then(function (indexes) {
-            certIDs = indexes.filter(function (id) {
-                var parts = id.split("-");
-                return parts[0] === "x509";
-            });
-        })
-        .then(function () {
-            return provider.keyStorage.keys()
-        })
-        .then(function (indexes) {
-            keyIDs = indexes.filter(function (id) {
-                var parts = id.split("-");
-                return parts[0] === "private";
-            });
-        })
-        .then(function () {
-            var certificates = [];
-            for (var i = 0; i < certIDs.length; i++) {
-                var certID = certIDs[i];
-                for (var j = 0; j < keyIDs.length; j++) {
-                    var keyID = keyIDs[j];
-                    if (keyID.split("-")[2] === certID.split("-")[2]) {
-                        certificates.push(certID);
-                        break;
-                    }
+    return Promise.resolve().then(() => {
+        if (typeof provider.isLoggedIn == "function") {
+            return provider.isLoggedIn()
+                .then((ok) => {
+                    if (ok)
+                        return provider.logout();
+                }).then(() => {
+                    return provider.login();
+                });
+        }
+    }).then(() => {
+        return provider.certStorage.keys()
+    }).then((indexes) => {
+        certIDs = indexes.filter(function (id) {
+            var parts = id.split("-");
+            return parts[0] === "x509";
+        });
+    }).then(() => {
+        return provider.keyStorage.keys()
+    }).then((indexes) => {
+        keyIDs = indexes.filter((id) => {
+            var parts = id.split("-");
+            return parts[0] === "private";
+        });
+    }).then(() => {
+        var certificates = [];
+        for (var i = 0; i < certIDs.length; i++) {
+            var certID = certIDs[i];
+            for (var j = 0; j < keyIDs.length; j++) {
+                var keyID = keyIDs[j];
+                if (keyID.split("-")[2] === certID.split("-")[2]) {
+                    certificates.push(certID);
+                    break;
                 }
             }
-            return certificates;
-        });
+        }
+        return certificates;
+    });
 }
 
-export function createCMSSigned(digest, certSimpl, key) {
+export function createCMSSigned(hash, certSimpl, key) {
     const signedAttr = [];
 
 	signedAttr.push(new pkijs.Attribute({
@@ -135,7 +129,7 @@ export function createCMSSigned(digest, certSimpl, key) {
 	signedAttr.push(new pkijs.Attribute({
 		type: "1.2.840.113549.1.9.4",
 		values: [
-			new asn1js.OctetString({ valueHex: digest })
+			new asn1js.OctetString({ valueHex: hash })
 		]
 	})); // messageDigest
 
@@ -161,8 +155,7 @@ export function createCMSSigned(digest, certSimpl, key) {
 		attributes: signedAttr
 	});
 
-    //TODO: añadir extensiones
-    return cmsSignedSimpl.sign(key, 0, "sha-256").then(() => { // SHA-256 por defecto
+    return cmsSignedSimpl.sign(key, 0, hashAlg).then(() => {
         var cmsSignedSchema = cmsSignedSimpl.toSchema(true);
         var cmsContentSimp = new pkijs.ContentInfo({
             contentType: '1.2.840.113549.1.7.2',
@@ -183,10 +176,9 @@ export function createCMSSigned(digest, certSimpl, key) {
     });
 }
 
-export function messageDigest(pdfRaw, byteRange) {
-    // TODO: fixme alg by default SHA-256 and digest
+export function pdfHash(pdfRaw, byteRange) {
     var data = pdfsign.removeFromArray(pdfRaw, byteRange[1], byteRange[2]);
-    return pkijs.getEngine().subtle.digest('SHA-256', data);
+    return pkijs.getEngine().subtle.digest(hashAlg, data);
 }
 
 export function issuerCertificate() {
@@ -195,8 +187,8 @@ export function issuerCertificate() {
 
 export function signpdf(pdfRaw, key, certificate) {
     return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(async ([pdf, byteRange]) => {
-        let digest = await messageDigest(pdf, byteRange);
-        return createCMSSigned(digest, certificate, key).then((signature) => { // hex
+        let hash = await pdfHash(pdf, byteRange);
+        return createCMSSigned(hash, certificate, key).then((signature) => { // hex
             return pdfsign.updateArray(pdf, byteRange[1] + 1, signature);
         });
     });
@@ -250,7 +242,7 @@ async function createOCSPReq(serialNumbers) {
 		        }),
 		        issuerNameHash: new asn1js.OctetString({ valueHex: issuerNameHash }),
 		        issuerKeyHash: new asn1js.OctetString({ valueHex: issuerKeyHash }),
-		        serialNumber: new asn1js.Integer({ valueHex: serialNumber}) // cert.serialNumber.valueBlock.valueHex
+		        serialNumber: new asn1js.Integer({ valueHex: serialNumber})
 	        })
         }));
     });
@@ -280,13 +272,12 @@ export async function listSignatures(pdf, ocspReq) {
 
         let certificate = cmsSignedSimp.certificates[0];
 
-        data.numeroSerie = pvutils.bufferToHexCodes(certificate.serialNumber.valueBlock.valueHex);
+        data.serialNumber = pvutils.bufferToHexCodes(certificate.serialNumber.valueBlock.valueHex);
         serialNumbers.push(certificate.serialNumber.valueBlock.valueHex);
 
         let subFilter = v.get("SubFilter");
         let filter = v.get("Filter");
         data.subFilter = subFilter.name.toUpperCase();
-
 
         // Fecha de la firma desde el documento PDF
         // TODO: mejorar
@@ -294,24 +285,21 @@ export async function listSignatures(pdf, ocspReq) {
         var pattern = /D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})-0(\d{1})'00'/;
 
         if (date != undefined)
-            data.fechaFirma = date.replace(pattern, '$3/$2/$1 $4:$5:$6');
+            data.signedDate = date.replace(pattern, '$3/$2/$1 $4:$5:$6');
 
-        // Limpiar Campo de la firma
         let signedDataBuffer = pdfsign.removeFromArray(pdf.stream.bytes,
                                                         byteRange[1],
                                                         byteRange[2]);
-        // Limpiar datos
         signedDataBuffer = pdfsign.removeFromArray(signedDataBuffer,
                                                     byteRange[1]+byteRange[3],
                                                     signedDataBuffer.length);
 
-        data.autenticidad = await cmsSignedSimp.verify({signer: 0, data: signedDataBuffer,
-                                                        trustedCertificates: trustedCertificates});
+        data.modified = !(await cmsSignedSimp.verify({signer: 0, data: signedDataBuffer,
+                                                      trustedCertificates: trustedCertificates}));
 
-        data.cadenaConfianza = await certificate.verify(trustedCertificates[0]);
-        // data.certificado = pvutils.toBase64(pvutils.arrayBufferToString(certificate.tbs));
-        data.certificado = certificate;
-        data.ocsp_estado = 2; // Desconocido por defecto.
+        data.trusted = await certificate.verify(trustedCertificates[0]);
+        data.certificate = certificate;
+        data.ocsp_status = 2;
         result.data.push(data);
     }
 
@@ -342,16 +330,16 @@ export async function listSignatures(pdf, ocspReq) {
                         let subjval = ocspBasicResp.tbsResponseData.responses[i].certStatus.idBlock.tagNumber;
 
                         let data = result.data.find((data) => {
-                            return data.numeroSerie == typeval;
+                            return data.serialNumber == typeval;
                         });
                         if (data)
-                            data.ocsp_estado = subjval;
+                            data.ocsp_status = subjval;
 
                         if (subjval == 1) {
-                            data.ocsp_fechaRevocacion = ocspBasicResp.tbsResponseData.
+                            data.ocsp_revokedDate = ocspBasicResp.tbsResponseData.
                                 responses[i].certStatus.valueBlock.value[0].toDate()
                         }
-                        data.ocsp_fechaActualizacion = ocspBasicResp.tbsResponseData.responses[i].thisUpdate;
+                        data.ocsp_update = ocspBasicResp.tbsResponseData.responses[i].thisUpdate;
                     }
 
                 } else {
@@ -371,21 +359,16 @@ export function firstCertificate(provider) {
     let certRaw;
     let certID;
 
-    let sequence = listCertificates(provider).then((certificados) => {
-        if (certificados.length >0) {
-            // Seleccionar el primer certificado
-            certID = certificados[0];
+    return listCertificates(provider).then((certificates) => {
+        if (certificates.length >0) {
+            certID = certificates[0];
             return certificateRaw(provider, certID);
         } else
             throw new Error("No hay certificados.");
-    });
-
-    sequence = sequence.then((raw) => {
+    }).then((raw) => {
         certRaw = raw;
         return keyFromCertificateId("private", provider, certID);
-    });
-
-    sequence = sequence.then((key) => {
+    }).then((key) => {
         if (!key)
             throw new Error("Certificado no tiene llave privada.");
 
@@ -395,9 +378,8 @@ export function firstCertificate(provider) {
 
         return [key, certificate];
     });
-    return sequence;
 }
 
-export function setEngine(nombre, provider) {
-    pkijs.setEngine(nombre, provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
+export function setEngine(name, provider) {
+    pkijs.setEngine(name, provider, new pkijs.CryptoEngine({name: name, crypto: provider, subtle: provider.subtle}));
 }

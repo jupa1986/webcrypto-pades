@@ -1,6 +1,6 @@
 require("babel-polyfill");
 
-var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
+const {PDFDocument} = require("../node_modules/pdfjs-dist/lib/core/document");
 const WebCrypto = require("node-webcrypto-ossl");
 const pdfsign = require('../');
 const pkijs = require("pkijs");
@@ -15,19 +15,16 @@ sequence = sequence.then(()=> {
 });
 
 sequence = sequence.then((provider) => {
-    let subtle = new pkijs.CryptoEngine({name: 'ossl',
-                                         crypto: provider,
-                                         subtle: provider.subtle});
-    pkijs.setEngine("ossl", provider, subtle);
+    pdfsign.setEngine("ossl", provider);
 
     // Generar espacio para firma digital en un PDF.
     var pdfBuffer = fs.readFileSync("./simple/mini.pdf");
     pdfBuffer = new Uint8Array(pdfBuffer);
-    return pdfsign.espacioFirma(pdfBuffer, pkijs.getEngine());
+    return pdfsign.signpdfEmpty(pdfBuffer, pkijs.getEngine());
 });
 
 sequence.then(([pdf, byteRange]) => {
-    console.log("byteRange:", byteRange);
-    fs.writeFileSync('./out_s.pdf', pdf); // Guardado PDF
-    console.log("OK");
+    fs.writeFileSync('./out.pdf', pdf);
+}).catch((err) => {
+    console.error(err);
 });

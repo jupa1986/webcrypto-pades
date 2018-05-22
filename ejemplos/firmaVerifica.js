@@ -1,6 +1,6 @@
 require("babel-polyfill");
 
-var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
+const {PDFDocument} = require("../node_modules/pdfjs-dist/lib/core/document");
 const WebCrypto = require("node-webcrypto-ossl");
 const wcp11 = require("node-webcrypto-p11");
 const streams = require('memory-streams');
@@ -24,30 +24,27 @@ let sequence = Promise.resolve();
 sequence = sequence.then(()=> {
     return new wcp11.WebCrypto(config);
 });
+
 let pdfBuffer = fs.readFileSync("./simple/mini.pdf");
 pdfBuffer = new Uint8Array(pdfBuffer);
 
 sequence = sequence.then((provider) => {
-    pkijs.setEngine('local', provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
-    return pdfsign.primerCertificado(provider).then(async ([key, certificate]) => {
-        pdfBuffer = await pdfsign.firmarPDF(pdfBuffer, key, certificate);
-        fs.writeFileSync('./out.pdf', pdfBuffer); // Guardado PDF
+    pdfsign.setEngine("p11", provider);
+
+    return pdfsign.firstCertificate(provider).then(async ([key, certificate]) => {
+        pdfBuffer = await pdfsign.signpdf(pdfBuffer, key, certificate);
+        return pdfBuffer;
     });
 });
 
-sequence.then(() => {
-    let pdfRaw = fs.readFileSync("./out.pdf");
-    pdfRaw = new Uint8Array(pdfRaw);
-    let webcrypto = new WebCrypto();
-    let subtle = new pkijs.CryptoEngine({name: 'ossl',
-                                         crypto: webcrypto,
-                                         subtle: webcrypto.subtle});
-    pkijs.setEngine("ossl", webcrypto, subtle);
-    return pdfsign.listarFirmas(pdfRaw, HTTPOCSPRequest).then((result) => {
+sequence.then((pdfBuffer) => {
+    pdfsign.setEngine("ossl", new WebCrypto());
+
+    return pdfsign.listSignatures(pdfBuffer, HTTPOCSPRequest).then((result) => {
         console.log(result);
-    }).catch((err) => {
-        console.log(err);
     });
+}).catch((err) => {
+    console.log(err);
 });
 
 function HTTPOCSPRequest(ocspReqBuffer) {

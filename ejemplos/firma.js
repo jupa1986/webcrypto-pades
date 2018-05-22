@@ -1,13 +1,12 @@
 require("babel-polyfill");
 
+const {PDFDocument} = require("../node_modules/pdfjs-dist/lib/core/document");
 const wcp11 = require("node-webcrypto-p11");
 const pkijs = require("pkijs");
 const asn1js = require("asn1js");
 const fs = require('fs');
 const pvutils = require('pvutils');
 const pdfsign = require('../');
-
-var PDFDocument = require("../node_modules/pdfjs-dist/lib/core/document").PDFDocument;
 
 pdfsign.setPDFDocument(PDFDocument);
 
@@ -29,18 +28,16 @@ var pdfBuffer = fs.readFileSync("./simple/mini.pdf");
 pdfBuffer = new Uint8Array(pdfBuffer);
 
 sequence = sequence.then((provider) => {
-    let certificateRaw;
-    let certID;
-    pkijs.setEngine('local', provider, new pkijs.CryptoEngine({name: 'local', crypto: provider, subtle: provider.subtle}));
-    return pdfsign.primerCertificado(provider);
+    pdfsign.setEngine("p11", provider);
+    return pdfsign.firstCertificate(provider);
 });
 
 sequence.then(async ([key, certificate]) => {
-    // Lectura PDF
-    pdfBuffer = pdfBuffer;
 
-    pdfBuffer = await pdfsign.firmarPDF(pdfBuffer, key, certificate); // Firma
+    pdfBuffer = await pdfsign.signpdf(pdfBuffer, key, certificate); // Firma
     guardarPDF(pdfBuffer);
+}).catch((err) => {
+    console.error(err);
 });
 
 function guardarPDF(pdfBuffer) {
