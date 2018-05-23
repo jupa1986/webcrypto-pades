@@ -7,21 +7,21 @@ function $(id) {
 }
 
 // No 'Access-Control-Allow-Origin' header is present on the requested resource.
-// function HTTPOCSPRequest(ocspReqBuffer) {
-//     return new Promise(function (resolve, reject) {
-//         let url = "http://firmadigital.bo/ocsp/";
+function HTTPOCSPRequest(ocspReqBuffer) {
+    return new Promise(function (resolve, reject) {
+        let url = "http://firmadigital.bo/ocsp/";
 
-//         var xhr = new XMLHttpRequest();
-//         xhr.withCredentials = true;
-//         xhr.responseType='arraybuffer';
-//         xhr.open("POST", url, true);
-//         xhr.onload = function(e) {
-//             resolve([200, e.response]);
-//         }
-//         xhr.onerror = reject;
-//         xhr.send(ocspReqBuffer);
-//     });
-// }
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true);
+        // xhr.setRequestHeader("Content-type", "application/ocsp-request");
+        xhr.responseType='arraybuffer';
+        xhr.onload = function(e) {
+            resolve([200, e.target.response]);
+        }
+        xhr.onerror = reject;
+        xhr.send(ocspReqBuffer);
+    });
+}
 
 var $file = $("pdfFile");
 
@@ -33,7 +33,7 @@ $file.onchange = function (ev) {
     $("resultado").innerHTML = "";
     reader.onload = (data) => {
         let pdfBuffer = data.target.result;
-        let sequence = pdfsign.listSignatures(pdfBuffer).then((signatures) => {
+        let sequence = pdfsign.listSignatures(pdfBuffer, HTTPOCSPRequest).then((signatures) => {
             // listar todas las firmas
             for (let i in signatures.data) {
                 let data = signatures.data[i];
