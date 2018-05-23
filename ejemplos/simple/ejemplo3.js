@@ -6,7 +6,6 @@ function $(id) {
     return result;
 }
 
-// No 'Access-Control-Allow-Origin' header is present on the requested resource.
 function HTTPOCSPRequest(ocspReqBuffer) {
     return new Promise(function (resolve, reject) {
         let url = "http://firmadigital.bo/ocsp/";
