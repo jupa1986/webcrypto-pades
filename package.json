@@ -15,7 +15,7 @@
   "dependencies": {
     "asn1js": "^2.0.19",
     "pkijs": "^2.1.46",
-    "cadesjs": "^1.0.8",
+    "cadesjs": "git+ssh://git@gitlab.geo.gob.bo:agetic/CAdES.js.git",
     "pvutils": "^1.0.12"
   },
   "devDependencies": {

@@ -54,7 +54,7 @@ var createOCSPReq = function () {
         }, _callee2, this);
     }));
 
-    return function createOCSPReq(_x2) {
+    return function createOCSPReq(_x4) {
         return _ref4.apply(this, arguments);
     };
 }();
@@ -210,7 +210,7 @@ var listSignatures = exports.listSignatures = function () {
         }, _callee3, this, [[42, 54]]);
     }));
 
-    return function listSignatures(_x3, _x4) {
+    return function listSignatures(_x5, _x6) {
         return _ref5.apply(this, arguments);
     };
 }();
@@ -242,6 +242,8 @@ var pvutils = _interopRequireWildcard(_pvutils);
 var _pdfsign = require("./pdfsign.js");
 
 var pdfsign = _interopRequireWildcard(_pdfsign);
+
+var _cadesjs = require("cadesjs");
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -349,6 +351,11 @@ function listCertificates(provider) {
 }
 
 function createCMSSigned(hash, certSimpl, key) {
+    var sigtype = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'CADES';
+
+    var sequence = Promise.resolve();
+    var cmsSignedSimpl = void 0;
+    var eSSCertIDv2 = new _cadesjs.ESSCertIDv2();
     var signedAttr = [];
 
     signedAttr.push(new pkijs.Attribute({
@@ -361,27 +368,44 @@ function createCMSSigned(hash, certSimpl, key) {
         values: [new asn1js.OctetString({ valueHex: hash })]
     })); // messageDigest
 
-    var cmsSignedSimpl = new pkijs.SignedData({
-        version: 1,
-        encapContentInfo: new pkijs.EncapsulatedContentInfo({
-            eContentType: "1.2.840.113549.1.7.1" // "data" content type
-        }),
-        digestAlgorithms: [],
-        signerInfos: [new pkijs.SignerInfo({
-            version: 1,
-            sid: new pkijs.IssuerAndSerialNumber({
-                issuer: certSimpl.issuer,
-                serialNumber: certSimpl.serialNumber
-            })
-        })],
-        certificates: [certSimpl]
-    });
-    cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
-        type: 0,
-        attributes: signedAttr
+    if (sigtype === 'CADES') sequence = sequence.then(function () {
+        return eSSCertIDv2.fillValues({
+            hashAlgorithm: "SHA-256",
+            certificate: certSimpl
+        });
+    }).then(function () {
+        var signingCertificateV2 = new _cadesjs.SigningCertificateV2({ certs: [eSSCertIDv2] });
+
+        signedAttr.push(new pkijs.Attribute({
+            type: "1.2.840.113549.1.9.16.2.47",
+            values: [signingCertificateV2.toSchema()]
+        }));
     });
 
-    return cmsSignedSimpl.sign(key, 0, hashAlg).then(function () {
+    sequence = sequence.then(function () {
+        cmsSignedSimpl = new pkijs.SignedData({
+            version: 1,
+            encapContentInfo: new pkijs.EncapsulatedContentInfo({
+                eContentType: "1.2.840.113549.1.7.1" // "data" content type
+            }),
+            digestAlgorithms: [],
+            signerInfos: [new pkijs.SignerInfo({
+                version: 1,
+                sid: new pkijs.IssuerAndSerialNumber({
+                    issuer: certSimpl.issuer,
+                    serialNumber: certSimpl.serialNumber
+                })
+            })],
+            certificates: [certSimpl]
+        });
+        cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
+            type: 0,
+            attributes: signedAttr
+        });
+        return cmsSignedSimpl.sign(key, 0, hashAlg);
+    });
+
+    return sequence.then(function () {
         var cmsSignedSchema = cmsSignedSimpl.toSchema(true);
         var cmsContentSimp = new pkijs.ContentInfo({
             contentType: '1.2.840.113549.1.7.2',
@@ -414,7 +438,9 @@ function issuerCertificate() {
 function signpdf(pdfRaw, key, certificate) {
     var _this = this;
 
-    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(function () {
+    var sigtype = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'CADES';
+
+    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine(), sigtype).then(function () {
         var _ref2 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(_ref) {
             var _ref3 = _slicedToArray(_ref, 2),
                 pdf = _ref3[0],
@@ -430,7 +456,7 @@ function signpdf(pdfRaw, key, certificate) {
 
                         case 2:
                             hash = _context.sent;
-                            return _context.abrupt("return", createCMSSigned(hash, certificate, key).then(function (signature) {
+                            return _context.abrupt("return", createCMSSigned(hash, certificate, key, sigtype).then(function (signature) {
                                 // hex
                                 return pdfsign.updateArray(pdf, byteRange[1] + 1, signature);
                             }));
@@ -443,7 +469,7 @@ function signpdf(pdfRaw, key, certificate) {
             }, _callee, _this);
         }));
 
-        return function (_x) {
+        return function (_x3) {
             return _ref2.apply(this, arguments);
         };
     }());

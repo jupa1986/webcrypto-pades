@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 
 // https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdfs/PDF32000_2008.pdf
 var newSig = function () {
-    var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(webcrypto, pdf, root, rootSuccessor, date, password) {
+    var _ref = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee(webcrypto, pdf, root, rootSuccessor, date, password, sigtype) {
         var array, annotEntry, sigEntry, appendAnnot, startAnnot, append, startSig, start, crypto, middle, byteRange, end, append2, startRoot, limit, acroForm, appendAcroForm, offsetForm, offsetAcroForm, offsetSigFlags, endOffsetAcroForm, pages, contentRef, xref, startContent, xrefEntry, xrefEntrySuccessor, offsetAnnot, sha256Buffer, sha256Hex, prev, eof, buffer, ubuffer, j, i, prevStr, offsetXref, old, startxref, xrefEntries, xrefTable, from1, to1, from2, to2;
         return regeneratorRuntime.wrap(function _callee$(_context) {
             while (1) {
@@ -25,8 +25,8 @@ var newSig = function () {
                         start = sigEntry + ' 0 obj\n<</Contents <';
                         //TODO: Adobe thinks its important to have the right size, no idea why this is the case
 
-                        crypto = new Array(round256(1024 * 6)).join('0');
-                        middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:' + now(date) + '\')\n/ByteRange ';
+                        crypto = new Array(round256(1024 * 7)).join('0');
+                        middle = '>\n/Type/Sig/SubFilter/' + (sigtype == 'CMS' ? 'adbe.pkcs7' : 'ETSI.CAdES') + '.detached/Location()/M(D:' + now(date) + '\')\n/ByteRange ';
                         byteRange = '[0000000000 0000000000 0000000000 0000000000]';
                         end = '/Filter/Adobe.PPKLite/Reason()/ContactInfo()>>\nendobj\n\n';
                         //all together
@@ -174,7 +174,7 @@ var newSig = function () {
         }, _callee, this);
     }));
 
-    return function newSig(_x, _x2, _x3, _x4, _x5, _x6) {
+    return function newSig(_x, _x2, _x3, _x4, _x5, _x6, _x7) {
         return _ref.apply(this, arguments);
     };
 }();
@@ -429,7 +429,7 @@ var newSig2 = function () {
         }, _callee2, this);
     }));
 
-    return function newSig2(_x7, _x8, _x9, _x10, _x11, _x12) {
+    return function newSig2(_x8, _x9, _x10, _x11, _x12, _x13) {
         return _ref2.apply(this, arguments);
     };
 }();
@@ -754,6 +754,8 @@ function createOffset(date) {
     var minutes = pad2(offset % 60);
     return sign + hours + "'" + minutes;
 }function signpdfEmpty(pdfRaw, crypto) {
+    var sigtype = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'CADES';
+
     var date = new Date();
 
     var pdf = parsePDF(pdfRaw);
@@ -762,7 +764,7 @@ function createOffset(date) {
     if (typeof root.uncompressed == 'undefined') throw new Error("PDF no soportado!");
 
     var rootSuccessor = findSuccessorEntry(pdf.xref.entries, root);
-    return newSig(crypto, pdf, root, rootSuccessor, date);
+    return newSig(crypto, pdf, root, rootSuccessor, date, null, sigtype);
 }
 
 function parsePDF(pdfRaw) {
