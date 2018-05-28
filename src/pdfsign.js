@@ -308,7 +308,7 @@ function createOffset(date) {
 }
 
 // https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdfs/PDF32000_2008.pdf
-async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
+async function newSig(webcrypto, pdf, root, rootSuccessor, date, password, sigtype) {
     var array = insertIntoArray(new Uint8Array(0), 0, '\n');
 
     var annotEntry = findFreeXrefNr(pdf.xref.entries);
@@ -322,8 +322,8 @@ async function newSig(webcrypto, pdf, root, rootSuccessor, date, password) {
     var startSig = array.length;
     var start = sigEntry+ ' 0 obj\n<</Contents <';
     //TODO: Adobe thinks its important to have the right size, no idea why this is the case
-    var crypto = new Array(round256(1024 * 6)).join( '0' );
-    var middle = '>\n/Type/Sig/SubFilter/adbe.pkcs7.detached/Location()/M(D:'+now(date)+'\')\n/ByteRange ';
+    var crypto = new Array(round256(1024 * 7)).join( '0' );
+    var middle = '>\n/Type/Sig/SubFilter/' + (sigtype == 'CMS'?'adbe.pkcs7':'ETSI.CAdES') + '.detached/Location()/M(D:'+now(date)+'\')\n/ByteRange ';
     var byteRange = '[0000000000 0000000000 0000000000 0000000000]';
     var end = '/Filter/Adobe.PPKLite/Reason()/ContactInfo()>>\nendobj\n\n';
     //all together
@@ -594,7 +594,7 @@ async function newSig2(webcrypto, pdf, root, rootSuccessor, date, password) {
     return [array, [from1, to1 - 1, from2 +1, to2]];
 }
 
-export function signpdfEmpty(pdfRaw, crypto){
+export function signpdfEmpty(pdfRaw, crypto, sigtype = 'CADES'){
     const date = new Date();
 
     let pdf = parsePDF(pdfRaw);
@@ -604,7 +604,7 @@ export function signpdfEmpty(pdfRaw, crypto){
         throw new Error("PDF no soportado!");
 
     var rootSuccessor = findSuccessorEntry(pdf.xref.entries, root);
-    return newSig(crypto, pdf, root, rootSuccessor, date);
+    return newSig(crypto, pdf, root, rootSuccessor, date, null, sigtype);
 }
 
 export function parsePDF(pdfRaw) {

@@ -2,6 +2,7 @@ import * as pkijs from "pkijs";
 import * as asn1js from "asn1js";
 import * as pvutils from "pvutils";
 import * as pdfsign from "./pdfsign.js"
+import { SigningCertificateV2, ESSCertIDv2 } from "cadesjs"
 
 let trustedCertificates = []; // Array of Certificates
 
@@ -116,7 +117,10 @@ export function listCertificates(provider) {
     });
 }
 
-export function createCMSSigned(hash, certSimpl, key) {
+export function createCMSSigned(hash, certSimpl, key, sigtype = 'CADES') {
+    let sequence = Promise.resolve();
+    let cmsSignedSimpl;
+    const eSSCertIDv2 = new ESSCertIDv2();
     const signedAttr = [];
 
 	signedAttr.push(new pkijs.Attribute({
@@ -133,29 +137,48 @@ export function createCMSSigned(hash, certSimpl, key) {
 		]
 	})); // messageDigest
 
-    let cmsSignedSimpl = new pkijs.SignedData({
-        version: 1,
-        encapContentInfo: new pkijs.EncapsulatedContentInfo({
-            eContentType: "1.2.840.113549.1.7.1" // "data" content type
-        }),
-        digestAlgorithms: [],
-        signerInfos: [
-            new pkijs.SignerInfo({
-                version: 1,
-                sid: new pkijs.IssuerAndSerialNumber({
-                    issuer: certSimpl.issuer,
-                    serialNumber: certSimpl.serialNumber
-                })
-            })
-        ],
-        certificates: [certSimpl]
-    });
-    cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
-		type: 0,
-		attributes: signedAttr
-	});
+    if (sigtype === 'CADES')
+        sequence = sequence.then(() => {
+            return eSSCertIDv2.fillValues({
+		        hashAlgorithm: "SHA-256",
+		        certificate: certSimpl
+	        });
+        }).then(() => {
+            const signingCertificateV2 = new SigningCertificateV2({certs: [eSSCertIDv2]});
 
-    return cmsSignedSimpl.sign(key, 0, hashAlg).then(() => {
+            signedAttr.push(new pkijs.Attribute({
+		        type: "1.2.840.113549.1.9.16.2.47",
+		        values: [signingCertificateV2.toSchema()]
+	        }));
+        });
+
+    sequence = sequence.then(() => {
+        cmsSignedSimpl = new pkijs.SignedData({
+            version: 1,
+            encapContentInfo: new pkijs.EncapsulatedContentInfo({
+                eContentType: "1.2.840.113549.1.7.1" // "data" content type
+            }),
+            digestAlgorithms: [],
+            signerInfos: [
+                new pkijs.SignerInfo({
+                    version: 1,
+                    sid: new pkijs.IssuerAndSerialNumber({
+                        issuer: certSimpl.issuer,
+                        serialNumber: certSimpl.serialNumber
+                    })
+                })
+            ],
+            certificates: [certSimpl]
+        });
+        cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
+		    type: 0,
+		    attributes: signedAttr
+	    });
+        return cmsSignedSimpl.sign(key, 0, hashAlg);
+    });
+
+
+    return sequence.then(() => {
         var cmsSignedSchema = cmsSignedSimpl.toSchema(true);
         var cmsContentSimp = new pkijs.ContentInfo({
             contentType: '1.2.840.113549.1.7.2',
@@ -185,10 +208,10 @@ export function issuerCertificate() {
     return CA;
 }
 
-export function signpdf(pdfRaw, key, certificate) {
-    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine()).then(async ([pdf, byteRange]) => {
+export function signpdf(pdfRaw, key, certificate, sigtype = 'CADES') {
+    return pdfsign.signpdfEmpty(pdfRaw, pkijs.getEngine(), sigtype).then(async ([pdf, byteRange]) => {
         let hash = await pdfHash(pdf, byteRange);
-        return createCMSSigned(hash, certificate, key).then((signature) => { // hex
+        return createCMSSigned(hash, certificate, key, sigtype).then((signature) => { // hex
             return pdfsign.updateArray(pdf, byteRange[1] + 1, signature);
         });
     });
@@ -288,11 +311,11 @@ export async function listSignatures(pdf, ocspReq) {
             data.signedDate = date.replace(pattern, '$3/$2/$1 $4:$5:$6');
 
         let signedDataBuffer = pdfsign.removeFromArray(pdf.stream.bytes,
-                                                        byteRange[1],
-                                                        byteRange[2]);
+                                                       byteRange[1],
+                                                       byteRange[2]);
         signedDataBuffer = pdfsign.removeFromArray(signedDataBuffer,
-                                                    byteRange[1]+byteRange[3],
-                                                    signedDataBuffer.length);
+                                                   byteRange[1]+byteRange[3],
+                                                   signedDataBuffer.length);
 
         data.modified = !(await cmsSignedSimp.verify({signer: 0, data: signedDataBuffer,
                                                       trustedCertificates: trustedCertificates}));
