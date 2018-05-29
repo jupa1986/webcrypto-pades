@@ -123,33 +123,33 @@ export function createCMSSigned(hash, certSimpl, key, sigtype = 'CADES') {
     const eSSCertIDv2 = new ESSCertIDv2();
     const signedAttr = [];
 
-	signedAttr.push(new pkijs.Attribute({
-		type: "1.2.840.113549.1.9.3",
-		values: [
-			new asn1js.ObjectIdentifier({ value: "1.2.840.113549.1.7.1" })
-		]
-	})); // contentType
+    signedAttr.push(new pkijs.Attribute({
+        type: "1.2.840.113549.1.9.3",
+        values: [
+            new asn1js.ObjectIdentifier({ value: "1.2.840.113549.1.7.1" })
+        ]
+    })); // contentType
 
-	signedAttr.push(new pkijs.Attribute({
-		type: "1.2.840.113549.1.9.4",
-		values: [
-			new asn1js.OctetString({ valueHex: hash })
-		]
-	})); // messageDigest
+    signedAttr.push(new pkijs.Attribute({
+        type: "1.2.840.113549.1.9.4",
+        values: [
+            new asn1js.OctetString({ valueHex: hash })
+        ]
+    })); // messageDigest
 
     if (sigtype === 'CADES')
         sequence = sequence.then(() => {
             return eSSCertIDv2.fillValues({
-		        hashAlgorithm: "SHA-256",
-		        certificate: certSimpl
-	        });
+                hashAlgorithm: "SHA-256",
+                certificate: certSimpl
+            });
         }).then(() => {
             const signingCertificateV2 = new SigningCertificateV2({certs: [eSSCertIDv2]});
 
             signedAttr.push(new pkijs.Attribute({
-		        type: "1.2.840.113549.1.9.16.2.47",
-		        values: [signingCertificateV2.toSchema()]
-	        }));
+                type: "1.2.840.113549.1.9.16.2.47",
+                values: [signingCertificateV2.toSchema()]
+            }));
         });
 
     sequence = sequence.then(() => {
@@ -171,9 +171,9 @@ export function createCMSSigned(hash, certSimpl, key, sigtype = 'CADES') {
             certificates: [certSimpl]
         });
         cmsSignedSimpl.signerInfos[0].signedAttrs = new pkijs.SignedAndUnsignedAttributes({
-		    type: 0,
-		    attributes: signedAttr
-	    });
+            type: 0,
+            attributes: signedAttr
+        });
         return cmsSignedSimpl.sign(key, 0, hashAlg);
     });
 
@@ -259,14 +259,14 @@ async function createOCSPReq(serialNumbers) {
 
     serialNumbers.forEach(serialNumber => {
         requestList.push(new pkijs.Request({
-	        reqCert: new pkijs.CertID({
-		        hashAlgorithm: new pkijs.AlgorithmIdentifier({
-			        algorithmId: "1.3.14.3.2.26"
-		        }),
-		        issuerNameHash: new asn1js.OctetString({ valueHex: issuerNameHash }),
-		        issuerKeyHash: new asn1js.OctetString({ valueHex: issuerKeyHash }),
-		        serialNumber: new asn1js.Integer({ valueHex: serialNumber})
-	        })
+            reqCert: new pkijs.CertID({
+                hashAlgorithm: new pkijs.AlgorithmIdentifier({
+                    algorithmId: "1.3.14.3.2.26"
+                }),
+                issuerNameHash: new asn1js.OctetString({ valueHex: issuerNameHash }),
+                issuerKeyHash: new asn1js.OctetString({ valueHex: issuerKeyHash }),
+                serialNumber: new asn1js.Integer({ valueHex: serialNumber})
+            })
         }));
     });
 
@@ -342,12 +342,12 @@ export async function listSignatures(pdf, ocspReq) {
                 if("responseBytes" in ocspRespSimpl) {
                     const asn1Basic = asn1js.fromBER(ocspRespSimpl.responseBytes.response.
                                                      valueBlock.valueHex);
-		            ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
+                    ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
                     if (serialNumbers.length != ocspBasicResp.tbsResponseData.responses.length) {
                         // ERROR
                     }
                     for(let i = 0; i < ocspBasicResp.tbsResponseData.responses.length; i++)
-	                {
+                    {
                         const typeval = pvutils.bufferToHexCodes(ocspBasicResp.tbsResponseData.responses[i].
                                                                  certID.serialNumber.valueBlock.valueHex);
                         let subjval = ocspBasicResp.tbsResponseData.responses[i].certStatus.idBlock.tagNumber;

@@ -95,27 +95,27 @@ export function removeFromArray(array, from, to) {
     var buf = new Uint8Array(array.length - cutlen);
 
     for (var i = 0; i < from; i++) {
-		buf[i] = array[i];
+        buf[i] = array[i];
     }
     for (var i = to, len = array.length; i < len; i++) {
-		buf[i-cutlen] = array[i];
+        buf[i-cutlen] = array[i];
     }
     return buf;
 }
 
 function pad10(num) {
-	var s = "000000000" + num;
-	return s.substr(s.length-10);
+    var s = "000000000" + num;
+    return s.substr(s.length-10);
 }
 
 function pad5(num) {
-	var s = "0000" + num;
-	return s.substr(s.length-5);
+    var s = "0000" + num;
+    return s.substr(s.length-5);
 }
 
 function pad2(num) {
-	var s = "0" + num;
-	return s.substr(s.length-2);
+    var s = "0" + num;
+    return s.substr(s.length-2);
 }
 
 function findRootEntry(xref) {
@@ -182,10 +182,10 @@ export function insertIntoArray(array, pos, str) {
         buf[i] = array[i];
     }
     for (var i = 0; i < ins.length; i++) {
-		buf[pos+i] = ins[i];
+        buf[pos+i] = ins[i];
     }
     for (var i = pos; i < array.length; i++) {
-		buf[ins.length+i] = array[i];
+        buf[ins.length+i] = array[i];
     }
     return buf;
 }
@@ -208,11 +208,11 @@ function findFreeXrefNr(xrefEntries, used) {
         var entry = xrefEntries[""+i];
         if(index === -1 && (typeof entry === 'undefined' || entry.free)) {
             return i;
-	    }
+        }
         if(index !== -1) {
             inc--;
         }
-	}
+    }
     return xrefEntries.length + inc;
 }
 
