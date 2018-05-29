@@ -755,9 +755,9 @@ function createOffset(date) {
     return sign + hours + "'" + minutes;
 }function signpdfEmpty(pdfRaw, crypto) {
     var sigtype = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'CADES';
+    var date = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : new Date();
 
-    var date = new Date();
-
+    // TODO: check date
     var pdf = parsePDF(pdfRaw);
     var root = findRootEntry(pdf.xref);
 

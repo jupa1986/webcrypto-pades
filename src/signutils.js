@@ -274,6 +274,64 @@ async function createOCSPReq(serialNumbers) {
     return ocspReq;
 };
 
+function parseOCSP(ocspResBuffer) {
+    let result = [];
+    const asn1 = asn1js.fromBER(ocspResBuffer);
+    const ocspRespSimpl = new pkijs.OCSPResponse({ schema: asn1.result });
+    let ocspBasicResp;
+
+    if (ocspRespSimpl.responseStatus.valueBlock.valueDec == 0) { // usar !=
+        if("responseBytes" in ocspRespSimpl) {
+            const asn1Basic = asn1js.fromBER(ocspRespSimpl.responseBytes.response.
+                                             valueBlock.valueHex);
+            ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
+
+            for(let i = 0; i < ocspBasicResp.tbsResponseData.responses.length; i++)
+            {
+                const typeval = pvutils.bufferToHexCodes(ocspBasicResp.tbsResponseData.responses[i].
+                                                         certID.serialNumber.valueBlock.valueHex);
+                let subjval = ocspBasicResp.tbsResponseData.responses[i].certStatus.idBlock.tagNumber;
+
+                let data = {serialNumber:typeval,
+                            ocsp_status:subjval};
+
+                if (subjval == 1) {
+                    data.ocsp_revokedDate = ocspBasicResp.tbsResponseData.
+                        responses[i].certStatus.valueBlock.value[0].toDate()
+                }
+                data.ocsp_update = ocspBasicResp.tbsResponseData.responses[i].thisUpdate;
+                result.push(data);
+            }
+
+        } else {
+            // ERROR
+        }
+    }
+
+    return result;
+}
+
+export async function verifyOCSP(ocspReq, certificates) {
+    let serialNumbers = [];
+    // TODO: check certificates
+    for (let i = 0; i < certificates.length; i++) {
+        serialNumbers.push(certificates[i].serialNumber.valueBlock.valueHex);
+    }
+    let ocspReqBuffer = (await createOCSPReq(serialNumbers)).toSchema(true).toBER(false);
+
+    if (ocspReq != undefined && typeof ocspReq == 'function'){
+        try {
+            let ocspResult = await ocspReq(ocspReqBuffer);
+            let statusCode = ocspResult[0];
+            let ocspResBuffer = ocspResult[1];
+            return parseOCSP(ocspResBuffer);
+        } catch(err) {
+            // OCSP no disponible
+            console.log("OCSP no disponible:", err);
+        }
+    }
+}
+
 export async function listSignatures(pdf, ocspReq) {
     const result = {data:[]};
     pdf = pdfsign.parsePDF(pdf);
@@ -294,9 +352,9 @@ export async function listSignatures(pdf, ocspReq) {
         let cmsSignedSimp = new pkijs.SignedData({ schema: cmsContentSimp.content });
 
         let certificate = cmsSignedSimp.certificates[0];
-
-        data.serialNumber = pvutils.bufferToHexCodes(certificate.serialNumber.valueBlock.valueHex);
-        serialNumbers.push(certificate.serialNumber.valueBlock.valueHex);
+        let serialNumber = certificate.serialNumber.valueBlock.valueHex;
+        data.serialNumber = pvutils.bufferToHexCodes(serialNumber);
+        serialNumbers.push(serialNumber);
 
         let subFilter = v.get("SubFilter");
         let filter = v.get("Filter");
@@ -333,40 +391,12 @@ export async function listSignatures(pdf, ocspReq) {
             let ocspResult = await ocspReq(ocspReqBuffer);
             let statusCode = ocspResult[0];
             let ocspResBuffer = ocspResult[1];
+            let ores = parseOCSP(ocspResBuffer);
 
-            const asn1 = asn1js.fromBER(ocspResBuffer);
-            const ocspRespSimpl = new pkijs.OCSPResponse({ schema: asn1.result });
-            let ocspBasicResp;
-
-            if (ocspRespSimpl.responseStatus.valueBlock.valueDec == 0) { // usar !=
-                if("responseBytes" in ocspRespSimpl) {
-                    const asn1Basic = asn1js.fromBER(ocspRespSimpl.responseBytes.response.
-                                                     valueBlock.valueHex);
-                    ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
-                    if (serialNumbers.length != ocspBasicResp.tbsResponseData.responses.length) {
-                        // ERROR
-                    }
-                    for(let i = 0; i < ocspBasicResp.tbsResponseData.responses.length; i++)
-                    {
-                        const typeval = pvutils.bufferToHexCodes(ocspBasicResp.tbsResponseData.responses[i].
-                                                                 certID.serialNumber.valueBlock.valueHex);
-                        let subjval = ocspBasicResp.tbsResponseData.responses[i].certStatus.idBlock.tagNumber;
-
-                        let data = result.data.find((data) => {
-                            return data.serialNumber == typeval;
-                        });
-                        if (data)
-                            data.ocsp_status = subjval;
-
-                        if (subjval == 1) {
-                            data.ocsp_revokedDate = ocspBasicResp.tbsResponseData.
-                                responses[i].certStatus.valueBlock.value[0].toDate()
-                        }
-                        data.ocsp_update = ocspBasicResp.tbsResponseData.responses[i].thisUpdate;
-                    }
-
-                } else {
-                    // ERROR
+            for (let i = 0; i < ores.length; i++) {
+                let data = result.data[i];
+                for (let id in ores[i]) {
+                    data[id] = ores[i][id];
                 }
             }
         } catch(err) {

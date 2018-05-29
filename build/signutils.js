@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.listSignatures = undefined;
+exports.listSignatures = exports.verifyOCSP = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -59,13 +59,67 @@ var createOCSPReq = function () {
     };
 }();
 
-var listSignatures = exports.listSignatures = function () {
-    var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(pdf, ocspReq) {
-        var result, sigFields, serialNumbers, i, data, sigField, v, byteRange, contents, contentBuffer, asn1, cmsContentSimp, cmsSignedSimp, certificate, subFilter, filter, date, pattern, signedDataBuffer, ocspReqBuffer, ocspResult, statusCode, ocspResBuffer, _asn, ocspRespSimpl, ocspBasicResp, asn1Basic, _loop, _i;
-
+var verifyOCSP = exports.verifyOCSP = function () {
+    var _ref5 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3(ocspReq, certificates) {
+        var serialNumbers, i, ocspReqBuffer, ocspResult, statusCode, ocspResBuffer;
         return regeneratorRuntime.wrap(function _callee3$(_context3) {
             while (1) {
                 switch (_context3.prev = _context3.next) {
+                    case 0:
+                        serialNumbers = [];
+                        // TODO: check certificates
+
+                        for (i = 0; i < certificates.length; i++) {
+                            serialNumbers.push(certificates[i].serialNumber.valueBlock.valueHex);
+                        }
+                        _context3.next = 4;
+                        return createOCSPReq(serialNumbers);
+
+                    case 4:
+                        ocspReqBuffer = _context3.sent.toSchema(true).toBER(false);
+
+                        if (!(ocspReq != undefined && typeof ocspReq == 'function')) {
+                            _context3.next = 18;
+                            break;
+                        }
+
+                        _context3.prev = 6;
+                        _context3.next = 9;
+                        return ocspReq(ocspReqBuffer);
+
+                    case 9:
+                        ocspResult = _context3.sent;
+                        statusCode = ocspResult[0];
+                        ocspResBuffer = ocspResult[1];
+                        return _context3.abrupt("return", parseOCSP(ocspResBuffer));
+
+                    case 15:
+                        _context3.prev = 15;
+                        _context3.t0 = _context3["catch"](6);
+
+                        // OCSP no disponible
+                        console.log("OCSP no disponible:", _context3.t0);
+
+                    case 18:
+                    case "end":
+                        return _context3.stop();
+                }
+            }
+        }, _callee3, this, [[6, 15]]);
+    }));
+
+    return function verifyOCSP(_x5, _x6) {
+        return _ref5.apply(this, arguments);
+    };
+}();
+
+var listSignatures = exports.listSignatures = function () {
+    var _ref6 = _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4(pdf, ocspReq) {
+        var result, sigFields, serialNumbers, i, data, sigField, v, byteRange, contents, contentBuffer, asn1, cmsContentSimp, cmsSignedSimp, certificate, serialNumber, subFilter, filter, date, pattern, signedDataBuffer, ocspReqBuffer, ocspResult, statusCode, ocspResBuffer, ores, _i, _data, id;
+
+        return regeneratorRuntime.wrap(function _callee4$(_context4) {
+            while (1) {
+                switch (_context4.prev = _context4.next) {
                     case 0:
                         result = { data: [] };
 
@@ -73,15 +127,15 @@ var listSignatures = exports.listSignatures = function () {
 
                         sigFields = listSigFields(pdf);
                         serialNumbers = [];
-                        _context3.t0 = regeneratorRuntime.keys(sigFields);
+                        _context4.t0 = regeneratorRuntime.keys(sigFields);
 
                     case 5:
-                        if ((_context3.t1 = _context3.t0()).done) {
-                            _context3.next = 38;
+                        if ((_context4.t1 = _context4.t0()).done) {
+                            _context4.next = 39;
                             break;
                         }
 
-                        i = _context3.t1.value;
+                        i = _context4.t1.value;
                         data = {};
                         sigField = sigFields[i];
                         v = sigField.get("V");
@@ -92,10 +146,10 @@ var listSignatures = exports.listSignatures = function () {
                         cmsContentSimp = new pkijs.ContentInfo({ schema: asn1.result });
                         cmsSignedSimp = new pkijs.SignedData({ schema: cmsContentSimp.content });
                         certificate = cmsSignedSimp.certificates[0];
+                        serialNumber = certificate.serialNumber.valueBlock.valueHex;
 
-
-                        data.serialNumber = pvutils.bufferToHexCodes(certificate.serialNumber.valueBlock.valueHex);
-                        serialNumbers.push(certificate.serialNumber.valueBlock.valueHex);
+                        data.serialNumber = pvutils.bufferToHexCodes(serialNumber);
+                        serialNumbers.push(serialNumber);
 
                         subFilter = v.get("SubFilter");
                         filter = v.get("Filter");
@@ -114,104 +168,77 @@ var listSignatures = exports.listSignatures = function () {
 
                         signedDataBuffer = pdfsign.removeFromArray(signedDataBuffer, byteRange[1] + byteRange[3], signedDataBuffer.length);
 
-                        _context3.next = 29;
+                        _context4.next = 30;
                         return cmsSignedSimp.verify({ signer: 0, data: signedDataBuffer,
                             trustedCertificates: trustedCertificates });
 
-                    case 29:
-                        data.modified = !_context3.sent;
-                        _context3.next = 32;
+                    case 30:
+                        data.modified = !_context4.sent;
+                        _context4.next = 33;
                         return certificate.verify(trustedCertificates[0]);
 
-                    case 32:
-                        data.trusted = _context3.sent;
+                    case 33:
+                        data.trusted = _context4.sent;
 
                         data.certificate = certificate;
                         data.ocsp_status = 2;
                         result.data.push(data);
-                        _context3.next = 5;
+                        _context4.next = 5;
                         break;
 
-                    case 38:
-                        _context3.next = 40;
+                    case 39:
+                        _context4.next = 41;
                         return createOCSPReq(serialNumbers);
 
-                    case 40:
-                        ocspReqBuffer = _context3.sent.toSchema(true).toBER(false);
+                    case 41:
+                        ocspReqBuffer = _context4.sent.toSchema(true).toBER(false);
 
                         if (!(ocspReq != undefined && typeof ocspReq == 'function')) {
-                            _context3.next = 57;
+                            _context4.next = 56;
                             break;
                         }
 
-                        _context3.prev = 42;
-                        _context3.next = 45;
+                        _context4.prev = 43;
+                        _context4.next = 46;
                         return ocspReq(ocspReqBuffer);
 
-                    case 45:
-                        ocspResult = _context3.sent;
+                    case 46:
+                        ocspResult = _context4.sent;
                         statusCode = ocspResult[0];
                         ocspResBuffer = ocspResult[1];
-                        _asn = asn1js.fromBER(ocspResBuffer);
-                        ocspRespSimpl = new pkijs.OCSPResponse({ schema: _asn.result });
-                        ocspBasicResp = void 0;
+                        ores = parseOCSP(ocspResBuffer);
 
 
-                        if (ocspRespSimpl.responseStatus.valueBlock.valueDec == 0) {
-                            // usar !=
-                            if ("responseBytes" in ocspRespSimpl) {
-                                asn1Basic = asn1js.fromBER(ocspRespSimpl.responseBytes.response.valueBlock.valueHex);
+                        for (_i = 0; _i < ores.length; _i++) {
+                            _data = result.data[_i];
 
-                                ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
-                                if (serialNumbers.length != ocspBasicResp.tbsResponseData.responses.length) {
-                                    // ERROR
-                                }
-
-                                _loop = function _loop(_i) {
-                                    var typeval = pvutils.bufferToHexCodes(ocspBasicResp.tbsResponseData.responses[_i].certID.serialNumber.valueBlock.valueHex);
-                                    var subjval = ocspBasicResp.tbsResponseData.responses[_i].certStatus.idBlock.tagNumber;
-
-                                    var data = result.data.find(function (data) {
-                                        return data.serialNumber == typeval;
-                                    });
-                                    if (data) data.ocsp_status = subjval;
-
-                                    if (subjval == 1) {
-                                        data.ocsp_revokedDate = ocspBasicResp.tbsResponseData.responses[_i].certStatus.valueBlock.value[0].toDate();
-                                    }
-                                    data.ocsp_update = ocspBasicResp.tbsResponseData.responses[_i].thisUpdate;
-                                };
-
-                                for (_i = 0; _i < ocspBasicResp.tbsResponseData.responses.length; _i++) {
-                                    _loop(_i);
-                                }
-                            } else {
-                                // ERROR
+                            for (id in ores[_i]) {
+                                _data[id] = ores[_i][id];
                             }
                         }
-                        _context3.next = 57;
+                        _context4.next = 56;
                         break;
 
-                    case 54:
-                        _context3.prev = 54;
-                        _context3.t2 = _context3["catch"](42);
+                    case 53:
+                        _context4.prev = 53;
+                        _context4.t2 = _context4["catch"](43);
 
                         // OCSP no disponible
-                        console.log("OCSP no disponible:", _context3.t2);
+                        console.log("OCSP no disponible:", _context4.t2);
+
+                    case 56:
+                        return _context4.abrupt("return", result);
 
                     case 57:
-                        return _context3.abrupt("return", result);
-
-                    case 58:
                     case "end":
-                        return _context3.stop();
+                        return _context4.stop();
                 }
             }
-        }, _callee3, this, [[42, 54]]);
+        }, _callee4, this, [[43, 53]]);
     }));
 
-    return function listSignatures(_x5, _x6) {
-        return _ref5.apply(this, arguments);
+    return function listSignatures(_x7, _x8) {
+        return _ref6.apply(this, arguments);
     };
 }();
 
@@ -500,6 +527,39 @@ function listSigFields(pdf) {
 }
 
 ;
+
+function parseOCSP(ocspResBuffer) {
+    var result = [];
+    var asn1 = asn1js.fromBER(ocspResBuffer);
+    var ocspRespSimpl = new pkijs.OCSPResponse({ schema: asn1.result });
+    var ocspBasicResp = void 0;
+
+    if (ocspRespSimpl.responseStatus.valueBlock.valueDec == 0) {
+        // usar !=
+        if ("responseBytes" in ocspRespSimpl) {
+            var asn1Basic = asn1js.fromBER(ocspRespSimpl.responseBytes.response.valueBlock.valueHex);
+            ocspBasicResp = new pkijs.BasicOCSPResponse({ schema: asn1Basic.result });
+
+            for (var i = 0; i < ocspBasicResp.tbsResponseData.responses.length; i++) {
+                var typeval = pvutils.bufferToHexCodes(ocspBasicResp.tbsResponseData.responses[i].certID.serialNumber.valueBlock.valueHex);
+                var subjval = ocspBasicResp.tbsResponseData.responses[i].certStatus.idBlock.tagNumber;
+
+                var data = { serialNumber: typeval,
+                    ocsp_status: subjval };
+
+                if (subjval == 1) {
+                    data.ocsp_revokedDate = ocspBasicResp.tbsResponseData.responses[i].certStatus.valueBlock.value[0].toDate();
+                }
+                data.ocsp_update = ocspBasicResp.tbsResponseData.responses[i].thisUpdate;
+                result.push(data);
+            }
+        } else {
+            // ERROR
+        }
+    }
+
+    return result;
+}
 
 function firstCertificate(provider) {
     var certRaw = void 0;

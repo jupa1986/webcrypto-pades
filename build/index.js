@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.pdfHash = exports.firstProvider = exports.firstCertificate = exports.listSignatures = exports.issuerCertificate = exports.setEngine = exports.signpdf = exports.createCMSSigned = exports.certificateRaw = exports.keyFromCertificateId = exports.listProviders = exports.listCertificates = exports.setPDFDocument = exports.updateArray = exports.removeFromArray = exports.parsePDF = exports.signpdfEmpty = undefined;
+exports.verifyOCSP = exports.pdfHash = exports.firstProvider = exports.firstCertificate = exports.listSignatures = exports.issuerCertificate = exports.setEngine = exports.signpdf = exports.createCMSSigned = exports.certificateRaw = exports.keyFromCertificateId = exports.listProviders = exports.listCertificates = exports.setPDFDocument = exports.updateArray = exports.removeFromArray = exports.parsePDF = exports.signpdfEmpty = undefined;
 
 var _pdfsign = require("./pdfsign.js");
 
@@ -26,3 +26,4 @@ exports.listSignatures = _signutils.listSignatures;
 exports.firstCertificate = _signutils.firstCertificate;
 exports.firstProvider = _signutils.firstProvider;
 exports.pdfHash = _signutils.pdfHash;
+exports.verifyOCSP = _signutils.verifyOCSP;

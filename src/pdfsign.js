@@ -594,9 +594,8 @@ async function newSig2(webcrypto, pdf, root, rootSuccessor, date, password) {
     return [array, [from1, to1 - 1, from2 +1, to2]];
 }
 
-export function signpdfEmpty(pdfRaw, crypto, sigtype = 'CADES'){
-    const date = new Date();
-
+export function signpdfEmpty(pdfRaw, crypto, sigtype = 'CADES', date = new Date()){
+    // TODO: check date
     let pdf = parsePDF(pdfRaw);
     var root = findRootEntry(pdf.xref);
 
